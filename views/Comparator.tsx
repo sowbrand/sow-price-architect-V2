@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Scale, ArrowRight, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { Scale, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
-import { INITIAL_PRODUCT } from '../types';
+// AQUI ESTAVA O ERRO: Agora importamos do lugar certo
+import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult } from '../types';
 
 interface ComparatorProps {
@@ -11,13 +12,13 @@ interface ComparatorProps {
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
-    // Inicializa Cenário A (Padrão) e Cenário B (Lote menor e técnica diferente para contraste inicial)
+    // Inicializa Cenário A (Padrão) e Cenário B (Lote menor)
     const [scenarioA, setScenarioA] = useState<ProductInput>(INITIAL_PRODUCT);
     const [scenarioB, setScenarioB] = useState<ProductInput>({
         ...INITIAL_PRODUCT,
         productCategory: 'Camiseta Casual',
         batchSize: 50, // Lote menor
-        embellishments: [{ id: 'b1', type: 'DTG', dtgPrintCost: 18, dtgPretreatmentCost: 2 }]
+        embellishments: [{ id: 'b1', type: 'DTF', dtfMetersUsed: 0.5, dtfPrintCost: 30, dtfPretreatmentCost: 2 }]
     });
 
     const [resultA, setResultA] = useState<CalculationResult | null>(null);
@@ -36,7 +37,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setFunc(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
     };
 
-    // Função auxiliar para atualizar a primeira técnica de estampa (Simplificado para o Comparador)
+    // Função auxiliar simplificada para o Comparador
     const updateFirstEmbellishment = (
         field: string,
         value: string | number,
@@ -51,7 +52,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setFunc(prev => ({ ...prev, embellishments: newEmbellishments }));
     };
 
-    // Dados para o Gráfico Comparativo
+    // Dados para o Gráfico
     const chartData = [
         { name: 'Custo Prod.', A: resultA?.totalProductionCost || 0, B: resultB?.totalProductionCost || 0 },
         { name: 'Preço Venda', A: resultA?.suggestedSalePrice || 0, B: resultB?.suggestedSalePrice || 0 },
@@ -66,7 +67,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         result: CalculationResult | null
     ) => (
         <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-sm overflow-hidden`}>
-            {/* Header do Cenário */}
             <div className={`p-4 border-b border-sow-border ${colorClass} bg-opacity-5 flex items-center justify-between`}>
                 <h3 className="font-bold text-sow-dark font-helvetica uppercase tracking-wider">{title}</h3>
                 <div className="text-xs font-bold px-2 py-1 bg-white rounded border border-sow-border shadow-sm">
@@ -74,14 +74,12 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                 </div>
             </div>
 
-            {/* Inputs Principais */}
             <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                 <div className="space-y-4">
                     <p className="text-xs font-bold text-sow-grey uppercase border-b border-sow-border pb-1">Variáveis Chave</p>
                     <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" />
                     <InputGroup label="Preço Malha (R$/kg)" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" />
                     
-                    {/* Controle Simplificado de Técnica (Foca na primeira técnica para comparação rápida) */}
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-sow-grey mb-2 block">Técnica Principal</label>
                         <select 
@@ -90,7 +88,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                             className="w-full mb-3 bg-white border border-sow-border text-sm rounded p-2 outline-none focus:ring-1 focus:ring-sow-green"
                         >
                             <option value="SILK">Silk Screen</option>
-                            <option value="DTG">DTG / Digital</option>
+                            <option value="DTF">DTF / Digital</option>
                             <option value="BORDADO">Bordado</option>
                         </select>
                         
@@ -100,8 +98,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                                 <InputGroup label="Nº Cores" name="colors" value={input.embellishments[0]?.printColors || 1} onChange={(e) => updateFirstEmbellishment('printColors', parseFloat(e.target.value), input, setInput)} type="number" step="1" />
                             </div>
                         )}
-                        {input.embellishments[0]?.type === 'DTG' && (
-                             <InputGroup label="Custo Impressão Total" name="dtgCost" value={input.embellishments[0]?.dtgPrintCost || 0} onChange={(e) => updateFirstEmbellishment('dtgPrintCost', parseFloat(e.target.value), input, setInput)} type="number" prefix="R$" />
+                        {input.embellishments[0]?.type === 'DTF' && (
+                             <InputGroup label="Metros Usados" name="dtfCost" value={input.embellishments[0]?.dtfMetersUsed || 0} onChange={(e) => updateFirstEmbellishment('dtfMetersUsed', parseFloat(e.target.value), input, setInput)} type="number" />
                         )}
                          {input.embellishments[0]?.type === 'BORDADO' && (
                              <InputGroup label="Milheiros Pontos" name="stitch" value={input.embellishments[0]?.embroideryStitchCount || 0} onChange={(e) => updateFirstEmbellishment('embroideryStitchCount', parseFloat(e.target.value), input, setInput)} type="number" />
@@ -109,7 +107,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                     </div>
                 </div>
 
-                {/* Resultado Resumido do Coluna */}
                 <div className="mt-6 pt-6 border-t border-sow-border space-y-3">
                     <div className="flex justify-between items-center">
                         <span className="text-xs text-sow-grey uppercase font-bold">Custo Total</span>
@@ -134,13 +131,11 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         </div>
     );
 
-    // Lógica para determinar o vencedor
     const winner = resultA && resultB && resultA.netProfitUnit > resultB.netProfitUnit ? 'A' : 'B';
     const profitDiff = resultA && resultB ? Math.abs(resultA.netProfitUnit - resultB.netProfitUnit) : 0;
 
     return (
         <div className="h-full flex flex-col font-sans overflow-hidden">
-            {/* Header */}
             <div className="mb-6 shrink-0">
                 <div className="flex items-center gap-3 text-sow-dark mb-1">
                     <div className="p-2 bg-sow-green/10 rounded-lg"><Scale className="w-6 h-6 text-sow-green" /></div>
@@ -150,14 +145,11 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             </div>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-                {/* Coluna A */}
                 <div className="lg:col-span-4 h-full min-h-0">
                     {renderScenarioColumn('Cenário A', 'bg-gray-100', scenarioA, setScenarioA, resultA)}
                 </div>
 
-                {/* Coluna Central (Gráfico e Veredito) */}
                 <div className="lg:col-span-4 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
-                    {/* Card do Veredito */}
                     <div className="bg-sow-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0">
                         <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-32 h-32" /></div>
                         <h3 className="text-sow-green font-bold uppercase tracking-widest text-xs mb-2">Melhor Opção Financeira</h3>
@@ -171,7 +163,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                         </p>
                     </div>
 
-                    {/* Gráfico Comparativo */}
                     <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex-1 min-h-[300px] flex flex-col">
                         <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica">Comparativo Visual (Por Peça)</h4>
                         <div className="flex-1 w-full">
@@ -193,7 +184,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                     </div>
                 </div>
 
-                {/* Coluna B */}
                 <div className="lg:col-span-4 h-full min-h-0">
                     {renderScenarioColumn('Cenário B', 'bg-sow-green', scenarioB, setScenarioB, resultB)}
                 </div>

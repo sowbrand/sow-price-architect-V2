@@ -1,4 +1,3 @@
-
 export enum CalculationMode {
   DASHBOARD = 'DASHBOARD',
   CALCULATOR = 'CALCULATOR',
@@ -7,34 +6,19 @@ export enum CalculationMode {
   SETTINGS = 'SETTINGS',
 }
 
-export interface Embellishment {
-  id: string;
-  type: 'SILK' | 'BORDADO' | 'DTG';
-  printSetupCost?: number;
-  printColors?: number;
-  printPassCost?: number;
-  embroideryStitchCount?: number;
-  embroideryCostPerThousand?: number;
-  dtgPrintCost?: number;
-  dtgPretreatmentCost?: number;
+// Interfaces do Banco de Preços (Database)
+export interface SilkPriceTable {
+  small: { firstColor: number; extraColor: number; screenNew: number; screenRemake: number };
+  large: { firstColor: number; extraColor: number; screenNew: number; screenRemake: number };
 }
 
-export interface ProductInput {
-  productCategory: string;
-  customProductName: string;
-  fabricPricePerKg: number;
-  piecesPerKg: number;
-  lossPercentage: number;
-  plotterTotalCost: number;
-  cuttingLaborCost: number;
-  embellishments: Embellishment[];
-  sewingCost: number;
-  finishingCost: number;
-  packagingCost: number;
-  logisticsTotalCost: number;
-  freightOutCost: number;
-  batchSize: number;
-  targetMargin: number;
+export interface ServicesCosts {
+  cuttingManual: number;   
+  cuttingPlotter: number;  
+  plotterPaper: number;    
+  sewingStandard: number;  
+  dtfPrintMeter: number;   
+  dtfApplication: number;  
 }
 
 export interface SettingsData {
@@ -45,13 +29,49 @@ export interface SettingsData {
   defaultCardRate: number;
   defaultMarketingRate: number;
   defaultCommissionRate: number;
+  silkPrices: SilkPriceTable;
+  serviceCosts: ServicesCosts;
+}
+
+// Interfaces do Produto (Inputs)
+export interface Embellishment {
+  id: string;
+  type: 'SILK' | 'BORDADO' | 'DTF';
+  silkSize?: 'SMALL' | 'LARGE' | 'CUSTOM'; 
+  printSetupCost?: number;
+  printColors?: number;
+  printPassCost?: number;
+  isRegraving?: boolean; 
+  embroideryStitchCount?: number; 
+  embroideryCostPerThousand?: number;
+  dtfMetersUsed?: number; 
+}
+
+export interface ProductInput {
+  productCategory: string;
+  customProductName: string;
+  fabricPricePerKg: number;
+  piecesPerKg: number;
+  lossPercentage: number;
+  cuttingType: 'MANUAL' | 'PLOTTER';
+  plotterMetersTotal: number; 
+  plotterFreight: number;     
+  cuttingLaborCost: number; 
+  embellishments: Embellishment[];
+  sewingCost: number; 
+  finishingCost: number;
+  packagingCost: number;
+  logisticsTotalCost: number; 
+  freightOutCost: number;
+  batchSize: number;
+  targetMargin: number;
 }
 
 export interface CalculationResult {
   materialUnit: number;
   plotterUnit: number;
   cuttingLaborUnit: number;
-  processingUnit: number;
+  processingUnit: number; 
   sewingUnit: number;
   logisticsInUnit: number;
   industrialCostUnit: number;
@@ -67,32 +87,3 @@ export interface CalculationResult {
   markup: number;
   warnings: string[];
 }
-
-
-export const INITIAL_SETTINGS: SettingsData = {
-  monthlyFixedCosts: 15000,
-  estimatedMonthlyProduction: 1000,
-  taxRegime: 'SIMPLES',
-  defaultTaxRate: 10,
-  defaultCardRate: 4,
-  defaultMarketingRate: 5,
-  defaultCommissionRate: 0,
-};
-
-export const INITIAL_PRODUCT: ProductInput = {
-  productCategory: 'Camiseta Casual',
-  customProductName: '',
-  fabricPricePerKg: 65.00,
-  piecesPerKg: 3.2,
-  lossPercentage: 8,
-  plotterTotalCost: 45.00,
-  cuttingLaborCost: 1.50,
-  embellishments: [],
-  sewingCost: 7.00,
-  finishingCost: 1.00,
-  packagingCost: 1.20,
-  logisticsTotalCost: 50.00,
-  freightOutCost: 0,
-  batchSize: 100,
-  targetMargin: 25,
-};
