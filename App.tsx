@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './views/Dashboard';
@@ -6,10 +5,13 @@ import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
 import { SettingsView } from './views/Settings';
-import { CalculationMode, INITIAL_SETTINGS } from './types';
+import { CalculationMode } from './types';
 import type { SettingsData } from './types';
+// CORREÇÃO: Importando do novo local correto
+import { INITIAL_SETTINGS } from './constants/defaults';
 
 export const App: React.FC = () => {
+    // Agora o INITIAL_SETTINGS é carregado corretamente do arquivo defaults.ts
     const [mode, setMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
     const [settings, setSettings] = useState<SettingsData>(INITIAL_SETTINGS);
 
