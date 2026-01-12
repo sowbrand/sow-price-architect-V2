@@ -1,81 +1,203 @@
-
-import React, { useState } from 'react';
-import { Trophy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Scale, ArrowRight, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { INITIAL_PRODUCT } from '../types';
-import type { SettingsData, ProductInput } from '../types';
+import type { SettingsData, ProductInput, CalculationResult } from '../types';
 
 interface ComparatorProps {
   settings: SettingsData;
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
-    const [scenarioA, setScenarioA] = useState<ProductInput>({ ...INITIAL_PRODUCT, embellishments: [{ id: 'a', type: 'SILK', printColors: 1, printSetupCost: 40, printPassCost: 1.5 }] });
-    const [scenarioB, setScenarioB] = useState<ProductInput>({ ...INITIAL_PRODUCT, batchSize: 50, embellishments: [{ id: 'b', type: 'DTG', dtgPrintCost: 15, dtgPretreatmentCost: 2 }] });
+    // Inicializa Cenário A (Padrão) e Cenário B (Lote menor e técnica diferente para contraste inicial)
+    const [scenarioA, setScenarioA] = useState<ProductInput>(INITIAL_PRODUCT);
+    const [scenarioB, setScenarioB] = useState<ProductInput>({
+        ...INITIAL_PRODUCT,
+        productCategory: 'Camiseta Casual',
+        batchSize: 50, // Lote menor
+        embellishments: [{ id: 'b1', type: 'DTG', dtgPrintCost: 18, dtgPretreatmentCost: 2 }]
+    });
 
-    const resA = calculateScenario(scenarioA, settings);
-    const resB = calculateScenario(scenarioB, settings);
-    const bestMargin = resA.netProfitUnit > resB.netProfitUnit ? 'A' : 'B';
+    const [resultA, setResultA] = useState<CalculationResult | null>(null);
+    const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
-    const handleScenarioChange = (setter: React.Dispatch<React.SetStateAction<ProductInput>>, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    useEffect(() => {
+        setResultA(calculateScenario(scenarioA, settings));
+        setResultB(calculateScenario(scenarioB, settings));
+    }, [scenarioA, scenarioB, settings]);
+
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+        setFunc: React.Dispatch<React.SetStateAction<ProductInput>>
+    ) => {
         const { name, value, type } = e.target;
-        const numValue = type === 'number' ? parseFloat(value) || 0 : value;
-        setter(prev => {
-            const newEmbellishments = [...prev.embellishments];
-            if (newEmbellishments.length === 0) newEmbellishments.push({ id: Math.random().toString(), type: 'SILK' });
-            const firstEmb = { ...newEmbellishments[0] };
-            
-            if (name === 'printType') {
-                firstEmb.type = value as 'SILK' | 'BORDADO' | 'DTG';
-            } else if (name === 'printSetupCost') {
-                firstEmb.printSetupCost = numValue as number;
-            } else if (name === 'printColors') {
-                firstEmb.printColors = numValue as number;
-            } else if (name === 'printPassCost') {
-                firstEmb.printPassCost = numValue as number;
-            } else if (name === 'embroideryStitchCount') {
-                firstEmb.embroideryStitchCount = numValue as number;
-            } else if (name === 'embroideryCostPerThousand') {
-                firstEmb.embroideryCostPerThousand = numValue as number;
-            } else if (name === 'dtgPrintCost') {
-                firstEmb.dtgPrintCost = numValue as number;
-            } else if (name in prev) {
-                 return { ...prev, [name]: numValue };
-            }
-
-            newEmbellishments[0] = firstEmb;
-            return { ...prev, embellishments: newEmbellishments };
-        });
+        setFunc(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
     };
 
-    const renderScenarioInputs = (input: ProductInput, setInput: React.Dispatch<React.SetStateAction<ProductInput>>, title: string) => {
-      const emb = input.embellishments[0] || { id: 'temp', type: 'SILK' };
-      const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => handleScenarioChange(setInput, e);
-      return (
-        <div className="bg-white border border-sow-border rounded-xl p-6 space-y-5 shadow-sm">
-          <h3 className="font-bold text-lg text-sow-dark mb-4 border-b border-sow-border pb-3 flex justify-between items-center">{title}<span className="text-xs bg-gray-100 text-sow-grey px-2 py-1 rounded font-normal">Input Rápido</span></h3>
-          <div className="grid grid-cols-2 gap-4">
-              <InputGroup label="Preço Malha (R$/kg)" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={onChange} type="number" />
-              <InputGroup label="Rendimento (pçs/kg)" name="piecesPerKg" value={input.piecesPerKg} onChange={onChange} type="number" step="0.1" />
-              <div className="col-span-2"><InputGroup label="Tipo Beneficiamento" name="printType" value={emb.type} onChange={onChange} type="select" options={[{ label: 'Silk Screen', value: 'SILK' }, { label: 'DTG / Digital', value: 'DTG' }, { label: 'Bordado', value: 'BORDADO' }]} /></div>
-              <InputGroup label="Lote (pçs)" name="batchSize" value={input.batchSize} onChange={onChange} type="number" step="1" />
-              <InputGroup label="Costura + Acab." name="sewingCost" value={input.sewingCost + input.finishingCost} onChange={e => handleScenarioChange(setInput, {target:{name:'sewingCost', value: e.target.value, type:'number'}} as any)} type="number" prefix="R$" />
-              {emb.type === 'SILK' && (<><InputGroup label="Custo Tela (Matriz)" name="printSetupCost" value={emb.printSetupCost || 0} onChange={onChange} type="number" prefix="R$" /><InputGroup label="Nº Cores" name="printColors" value={emb.printColors || 0} onChange={onChange} type="number" step="1" /><InputGroup label="Custo Passada" name="printPassCost" value={emb.printPassCost || 0} onChange={onChange} type="number" prefix="R$" /></>)}
-              {emb.type === 'BORDADO' && (<><InputGroup label="Milheiros" name="embroideryStitchCount" value={emb.embroideryStitchCount || 0} onChange={onChange} type="number" step="0.1" /><InputGroup label="Valor Milheiro" name="embroideryCostPerThousand" value={emb.embroideryCostPerThousand || 0} onChange={onChange} type="number" prefix="R$" /></>)}
-              {emb.type === 'DTG' && (<div className="col-span-2"><InputGroup label="Custo Impressão" name="dtgPrintCost" value={emb.dtgPrintCost || 0} onChange={onChange} type="number" prefix="R$" /></div>)}
-          </div>
+    // Função auxiliar para atualizar a primeira técnica de estampa (Simplificado para o Comparador)
+    const updateFirstEmbellishment = (
+        field: string,
+        value: string | number,
+        currentInput: ProductInput,
+        setFunc: React.Dispatch<React.SetStateAction<ProductInput>>
+    ) => {
+        const newEmbellishments = [...currentInput.embellishments];
+        if (newEmbellishments.length === 0) {
+            newEmbellishments.push({ id: Math.random().toString(), type: 'SILK' });
+        }
+        newEmbellishments[0] = { ...newEmbellishments[0], [field]: value };
+        setFunc(prev => ({ ...prev, embellishments: newEmbellishments }));
+    };
+
+    // Dados para o Gráfico Comparativo
+    const chartData = [
+        { name: 'Custo Prod.', A: resultA?.totalProductionCost || 0, B: resultB?.totalProductionCost || 0 },
+        { name: 'Preço Venda', A: resultA?.suggestedSalePrice || 0, B: resultB?.suggestedSalePrice || 0 },
+        { name: 'Lucro Liq.', A: resultA?.netProfitUnit || 0, B: resultB?.netProfitUnit || 0 },
+    ];
+
+    const renderScenarioColumn = (
+        title: string,
+        colorClass: string,
+        input: ProductInput,
+        setInput: React.Dispatch<React.SetStateAction<ProductInput>>,
+        result: CalculationResult | null
+    ) => (
+        <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-sm overflow-hidden`}>
+            {/* Header do Cenário */}
+            <div className={`p-4 border-b border-sow-border ${colorClass} bg-opacity-5 flex items-center justify-between`}>
+                <h3 className="font-bold text-sow-dark font-helvetica uppercase tracking-wider">{title}</h3>
+                <div className="text-xs font-bold px-2 py-1 bg-white rounded border border-sow-border shadow-sm">
+                    Lote: {input.batchSize} pçs
+                </div>
+            </div>
+
+            {/* Inputs Principais */}
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                <div className="space-y-4">
+                    <p className="text-xs font-bold text-sow-grey uppercase border-b border-sow-border pb-1">Variáveis Chave</p>
+                    <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" />
+                    <InputGroup label="Preço Malha (R$/kg)" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" />
+                    
+                    {/* Controle Simplificado de Técnica (Foca na primeira técnica para comparação rápida) */}
+                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-sow-grey mb-2 block">Técnica Principal</label>
+                        <select 
+                            value={input.embellishments[0]?.type || 'SILK'} 
+                            onChange={(e) => updateFirstEmbellishment('type', e.target.value, input, setInput)}
+                            className="w-full mb-3 bg-white border border-sow-border text-sm rounded p-2 outline-none focus:ring-1 focus:ring-sow-green"
+                        >
+                            <option value="SILK">Silk Screen</option>
+                            <option value="DTG">DTG / Digital</option>
+                            <option value="BORDADO">Bordado</option>
+                        </select>
+                        
+                        {(!input.embellishments[0] || input.embellishments[0].type === 'SILK') && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <InputGroup label="Custo Tela" name="setup" value={input.embellishments[0]?.printSetupCost || 0} onChange={(e) => updateFirstEmbellishment('printSetupCost', parseFloat(e.target.value), input, setInput)} type="number" prefix="R$" />
+                                <InputGroup label="Nº Cores" name="colors" value={input.embellishments[0]?.printColors || 1} onChange={(e) => updateFirstEmbellishment('printColors', parseFloat(e.target.value), input, setInput)} type="number" step="1" />
+                            </div>
+                        )}
+                        {input.embellishments[0]?.type === 'DTG' && (
+                             <InputGroup label="Custo Impressão Total" name="dtgCost" value={input.embellishments[0]?.dtgPrintCost || 0} onChange={(e) => updateFirstEmbellishment('dtgPrintCost', parseFloat(e.target.value), input, setInput)} type="number" prefix="R$" />
+                        )}
+                         {input.embellishments[0]?.type === 'BORDADO' && (
+                             <InputGroup label="Milheiros Pontos" name="stitch" value={input.embellishments[0]?.embroideryStitchCount || 0} onChange={(e) => updateFirstEmbellishment('embroideryStitchCount', parseFloat(e.target.value), input, setInput)} type="number" />
+                        )}
+                    </div>
+                </div>
+
+                {/* Resultado Resumido do Coluna */}
+                <div className="mt-6 pt-6 border-t border-sow-border space-y-3">
+                    <div className="flex justify-between items-center">
+                        <span className="text-xs text-sow-grey uppercase font-bold">Custo Total</span>
+                        <span className="font-mono font-bold text-sow-dark">{result ? formatCurrency(result.totalProductionCost) : '-'}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-xs text-sow-grey uppercase font-bold">Preço Sugerido</span>
+                        <span className="font-mono font-bold text-sow-dark text-lg">{result ? formatCurrency(result.suggestedSalePrice) : '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-sow-green/10 p-2 rounded">
+                        <span className="text-xs text-sow-green uppercase font-bold">Lucro Líquido</span>
+                        <span className="font-mono font-bold text-sow-green">{result ? formatCurrency(result.netProfitUnit) : '-'}</span>
+                    </div>
+                     {result && result.warnings.length > 0 && (
+                        <div className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 flex gap-1 items-start">
+                            <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                            <span>{result.warnings[0]}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
-      );
-    };
+    );
+
+    // Lógica para determinar o vencedor
+    const winner = resultA && resultB && resultA.netProfitUnit > resultB.netProfitUnit ? 'A' : 'B';
+    const profitDiff = resultA && resultB ? Math.abs(resultA.netProfitUnit - resultB.netProfitUnit) : 0;
 
     return (
-      <div className="h-full flex flex-col overflow-hidden">
-        <div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-bold text-sow-dark flex items-center gap-2"><Trophy className="text-amber-500" />Análise Comparativa</h2><div className="bg-white px-5 py-2 rounded-lg text-sm text-sow-grey border border-sow-border shadow-sm">Vencedor: <span className="font-bold text-sow-green ml-1">{bestMargin === 'A' ? 'Cenário A' : 'Cenário B'}</span></div></div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto pb-24">
-            <div className="space-y-6">{renderScenarioInputs(scenarioA, setScenarioA, 'Cenário A')}<div className="bg-white rounded-xl p-6 border-t-4 border-sow-dark shadow-md"><div className="flex justify-between items-end mb-4"><span className="text-sow-grey uppercase text-xs font-bold">Preço Sugerido</span><span className="text-3xl font-mono font-bold text-sow-dark">{formatCurrency(resA.suggestedSalePrice)}</span></div><div className="space-y-3 text-sm font-mono border-t border-sow-border pt-4"><div className="flex justify-between text-sow-grey"><span>Custo Produção</span><span className="font-bold">{formatCurrency(resA.totalProductionCost)}</span></div><div className="flex justify-between text-sow-green font-bold text-lg bg-green-50 p-2 rounded"><span>Lucro Líquido</span><span>{formatCurrency(resA.netProfitUnit)}</span></div></div></div></div>
-            <div className="space-y-6">{renderScenarioInputs(scenarioB, setScenarioB, 'Cenário B')}<div className="bg-white rounded-xl p-6 border-t-4 border-sow-dark shadow-md"><div className="flex justify-between items-end mb-4"><span className="text-sow-grey uppercase text-xs font-bold">Preço Sugerido</span><span className="text-3xl font-mono font-bold text-sow-dark">{formatCurrency(resB.suggestedSalePrice)}</span></div><div className="space-y-3 text-sm font-mono border-t border-sow-border pt-4"><div className="flex justify-between text-sow-grey"><span>Custo Produção</span><span className="font-bold">{formatCurrency(resB.totalProductionCost)}</span></div><div className="flex justify-between text-sow-green font-bold text-lg bg-green-50 p-2 rounded"><span>Lucro Líquido</span><span>{formatCurrency(resB.netProfitUnit)}</span></div></div></div></div>
+        <div className="h-full flex flex-col font-sans overflow-hidden">
+            {/* Header */}
+            <div className="mb-6 shrink-0">
+                <div className="flex items-center gap-3 text-sow-dark mb-1">
+                    <div className="p-2 bg-sow-green/10 rounded-lg"><Scale className="w-6 h-6 text-sow-green" /></div>
+                    <h2 className="text-2xl font-bold font-helvetica tracking-tight">Comparador de Estratégias</h2>
+                </div>
+                <p className="text-sow-grey text-sm">Simule dois cenários paralelamente (Ex: Silk vs Digital) e decida qual protege melhor sua margem.</p>
+            </div>
+
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+                {/* Coluna A */}
+                <div className="lg:col-span-4 h-full min-h-0">
+                    {renderScenarioColumn('Cenário A', 'bg-gray-100', scenarioA, setScenarioA, resultA)}
+                </div>
+
+                {/* Coluna Central (Gráfico e Veredito) */}
+                <div className="lg:col-span-4 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
+                    {/* Card do Veredito */}
+                    <div className="bg-sow-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-32 h-32" /></div>
+                        <h3 className="text-sow-green font-bold uppercase tracking-widest text-xs mb-2">Melhor Opção Financeira</h3>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-4xl font-bold font-helvetica">Cenário {winner}</span>
+                            <CheckCircle2 className="text-sow-green w-8 h-8" />
+                        </div>
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                            O Cenário {winner} entrega <strong>{formatCurrency(profitDiff)} a mais de lucro</strong> por peça. 
+                            Em um lote de {winner === 'A' ? scenarioA.batchSize : scenarioB.batchSize} peças, isso representa <strong className="text-white">{formatCurrency(profitDiff * (winner === 'A' ? scenarioA.batchSize : scenarioB.batchSize))}</strong> de diferença no caixa.
+                        </p>
+                    </div>
+
+                    {/* Gráfico Comparativo */}
+                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex-1 min-h-[300px] flex flex-col">
+                        <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica">Comparativo Visual (Por Peça)</h4>
+                        <div className="flex-1 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#545454'}} />
+                                    <YAxis hide />
+                                    <Tooltip 
+                                        cursor={{fill: '#f8f9fa'}}
+                                        formatter={(value: number) => formatCurrency(value)}
+                                        contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+                                    />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                                    <Bar dataKey="A" name="Cenário A" fill="#545454" radius={[4, 4, 0, 0]} barSize={20} />
+                                    <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Coluna B */}
+                <div className="lg:col-span-4 h-full min-h-0">
+                    {renderScenarioColumn('Cenário B', 'bg-sow-green', scenarioB, setScenarioB, resultB)}
+                </div>
+            </div>
         </div>
-      </div>
     );
 };
