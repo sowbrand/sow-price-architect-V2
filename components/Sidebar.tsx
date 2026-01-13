@@ -18,15 +18,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode }) => {
 
     return (
         <aside className="w-20 lg:w-64 h-screen bg-sow-white border-r border-sow-border flex flex-col shrink-0 z-30 transition-all duration-300">
-            {/* Logo SOW BRAND - Conforme Manual (Helvetica) */}
+            {/* LOGO DO MANUAL: sow (light) brand (bold) */}
             <div className="h-24 flex items-center justify-center lg:justify-start lg:px-8">
-                <h1 className="font-helvetica text-2xl lg:text-3xl tracking-tight select-none">
-                    <span className="font-light text-sow-black">sow</span>
-                    <span className="font-bold text-sow-black">brand</span>
+                <h1 className="text-3xl tracking-tighter leading-none select-none">
+                    <span className="font-helvetica font-light text-sow-black">sow</span>
+                    <span className="font-helvetica font-bold text-sow-black">brand</span>
                 </h1>
             </div>
 
-            {/* Menu de Navegação Minimalista */}
             <nav className="flex-1 px-4 py-6 space-y-2">
                 {menuItems.map((item) => {
                     const isActive = currentMode === item.mode;
@@ -36,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode }) => {
                             onClick={() => setMode(item.mode)} 
                             className={`w-full flex items-center gap-4 p-3 rounded-lg transition-all duration-300 group
                                 ${isActive 
-                                    ? 'bg-sow-light text-sow-black shadow-sm border border-sow-border' 
+                                    ? 'bg-sow-light text-sow-black shadow-soft border border-sow-border' 
                                     : 'text-sow-grey hover:bg-sow-light hover:text-sow-black'
                                 }`
                             }
@@ -48,8 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode }) => {
                             />
                             <span className="hidden lg:block font-montserrat font-medium text-sm">{item.label}</span>
                             
-                            {/* Indicador de Ativo (Ponto Verde) */}
-                            {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sow-green hidden lg:block shadow-[0_0_8px_rgba(114,191,3,0.5)]"></div>}
+                            {/* Ponto verde indicativo (Detalhe Minimalista) */}
+                            {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sow-green hidden lg:block"></div>}
                         </button>
                     );
                 })}
