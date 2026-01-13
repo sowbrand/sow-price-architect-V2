@@ -1,63 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sow Price Architect v5.0</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              sow: {
-                green: '#72bf03',
-                grey: '#545454',
-                dark: '#000000',
-                light: '#f8f9fa',
-                border: '#e5e5e5'
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              helvetica: ['Helvetica', 'Arial', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-            }
-          }
-        }
-      }
-    </script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #ffffff;
-        color: #000000;
-        overflow: hidden;
-      }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #f1f1f1; }
-      ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #72bf03; }
-    </style>
-    <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.303.0",
-    "recharts": "https://esm.sh/recharts@2.10.3",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
-  }
-}
-</script>
-  <link rel="stylesheet" href="/index.css">
-</head>
-  <body>
+    <title>Sow Price Architect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    </head>
+  <body class="bg-sow-white text-sow-black font-montserrat">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

@@ -7,11 +7,9 @@ import { ReverseEngineering } from './views/ReverseEngineering';
 import { SettingsView } from './views/Settings';
 import { CalculationMode } from './types';
 import type { SettingsData } from './types';
-// CORREÇÃO: Importando do novo local correto
 import { INITIAL_SETTINGS } from './constants/defaults';
 
 export const App: React.FC = () => {
-    // Agora o INITIAL_SETTINGS é carregado corretamente do arquivo defaults.ts
     const [mode, setMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
     const [settings, setSettings] = useState<SettingsData>(INITIAL_SETTINGS);
 
@@ -27,14 +25,23 @@ export const App: React.FC = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 text-sow-dark font-sans overflow-hidden">
+        <div className="flex h-screen bg-sow-white font-montserrat overflow-hidden text-sow-grey">
             <Sidebar currentMode={mode} setMode={setMode} />
-            <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-                <div className="lg:hidden h-16 border-b border-sow-border flex items-center px-4 bg-white shrink-0">
-                    <span className="font-bold text-sow-dark">SOW Price Architect</span>
+            
+            <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-sow-white">
+                {/* Header Mobile - Só aparece em telas pequenas */}
+                <div className="lg:hidden h-16 border-b border-sow-border flex items-center justify-center bg-sow-white shrink-0 z-20">
+                    <h1 className="font-helvetica text-xl tracking-tight">
+                        <span className="font-normal text-sow-black">sow</span>
+                        <span className="font-bold text-sow-black">brand</span>
+                    </h1>
                 </div>
+
+                {/* Área de Conteúdo - Fundo Branco e Espaçamento Elegante */}
                 <div className="flex-1 p-4 lg:p-8 overflow-hidden relative">
-                    {renderContent()}
+                    <div className="h-full w-full max-w-[1600px] mx-auto animate-fade-in">
+                        {renderContent()}
+                    </div>
                 </div>
             </main>
         </div>
