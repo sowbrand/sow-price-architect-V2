@@ -32,7 +32,6 @@ export const InputGroup: React.FC<InputGroupProps> = ({
     onChange({ target: { name: name, value: finalVal.toString(), type: type } });
   };
 
-  // Classes base para o estilo minimalista
   const baseInputClass = `
     w-full bg-sow-white border border-sow-border rounded-lg p-2.5 
     text-sow-black text-sm font-montserrat font-medium
@@ -44,7 +43,6 @@ export const InputGroup: React.FC<InputGroupProps> = ({
 
   return (
     <div className="flex flex-col space-y-1.5 group">
-      {/* Label Elegante: Cinza Chumbo, Montserrat, Maiúsculo discreto */}
       <label className="text-[11px] font-bold uppercase tracking-wide text-sow-grey group-hover:text-sow-black transition-colors pl-1">
         {label}
       </label>
@@ -77,12 +75,15 @@ export const InputGroup: React.FC<InputGroupProps> = ({
             <input 
               type={type} 
               name={name} 
-              value={value} 
+              // CORREÇÃO: Forçar string remove zeros à esquerda residuais do navegador
+              value={value.toString()} 
               onChange={onChange as any} 
               step={type === 'number' ? step : undefined} 
               min={type === 'number' ? min : undefined} 
               onKeyDown={onKeyDown}
-              onFocus={(e) => e.target.select()} 
+              // CORREÇÃO: Seleciona tudo ao clicar ou focar (resolve o problema de ter que apagar o zero)
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
               className={`${baseInputClass} 
                 ${prefix ? 'pl-9' : (showStepper ? 'pl-9' : '')} 
                 ${suffix ? 'pr-8' : (showStepper ? 'pr-9' : '')}
