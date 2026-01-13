@@ -5,7 +5,6 @@ import * as XLSX from 'xlsx';
 import { InputGroup } from '../components/InputGroup';
 import { PriceCard } from '../components/PriceCard';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
-// AQUI ESTAVA O ERRO: Agora importamos do lugar certo
 import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult, Embellishment } from '../types';
 
@@ -18,7 +17,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     const [result, setResult] = useState<CalculationResult | null>(null);
 
     useEffect(() => {
-        // Atualiza custo costura se mudar no banco de dados
         if (input.sewingCost === INITIAL_PRODUCT.sewingCost && settings.serviceCosts.sewingStandard !== input.sewingCost) {
             setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
         }
@@ -50,9 +48,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
-                
                 const newItem = { ...item, [field]: value };
-                
                 if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM' && (field === 'silkSize' || field === 'printColors' || field === 'isRegraving')) {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
                     const colors = newItem.printColors || 1;
@@ -60,7 +56,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     newItem.printSetupCost = newItem.isRegraving ? table.screenRemake : table.screenNew;
                     newItem.printPassCost = table.firstColor + (extraColors * table.extraColor);
                 }
-                
                 return newItem;
             });
             return { ...prev, embellishments: updatedList };
@@ -125,7 +120,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                       
                       {input.cuttingType === 'PLOTTER' && (
                           <div className="bg-gray-50 p-3 rounded border border-gray-100 grid grid-cols-2 gap-3">
-                              <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" suffix="m" />
+                              <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} suffix="m" />
                               <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
                               <div className="col-span-2 text-[10px] text-sow-grey">Custo Papel Base: R$ {settings.serviceCosts.plotterPaper.toFixed(2)}/m</div>
                           </div>

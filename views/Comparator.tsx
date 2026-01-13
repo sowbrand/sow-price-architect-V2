@@ -3,6 +3,7 @@ import { Scale, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
+// CORREÇÃO: O caminho correto agora é este
 import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult } from '../types';
 
@@ -11,12 +12,11 @@ interface ComparatorProps {
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
-    // Inicializa Cenário A (Padrão) e Cenário B (Lote menor)
     const [scenarioA, setScenarioA] = useState<ProductInput>(INITIAL_PRODUCT);
     const [scenarioB, setScenarioB] = useState<ProductInput>({
         ...INITIAL_PRODUCT,
         productCategory: 'Camiseta Casual',
-        batchSize: 50, // Lote menor
+        batchSize: 50,
         embellishments: [{ id: 'b1', type: 'DTF', dtfMetersUsed: 0.5, dtfPrintCost: 30, dtfPretreatmentCost: 2 }]
     });
 
@@ -36,7 +36,10 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setFunc(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
     };
 
-    // Função auxiliar simplificada para o Comparador
+    const blockDecimals = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
+    };
+
     const updateFirstEmbellishment = (
         field: string,
         value: string | number,
@@ -51,7 +54,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setFunc(prev => ({ ...prev, embellishments: newEmbellishments }));
     };
 
-    // Dados para o Gráfico
     const chartData = [
         { name: 'Custo Prod.', A: resultA?.totalProductionCost || 0, B: resultB?.totalProductionCost || 0 },
         { name: 'Preço Venda', A: resultA?.suggestedSalePrice || 0, B: resultB?.suggestedSalePrice || 0 },
@@ -76,9 +78,13 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                 <div className="space-y-4">
                     <p className="text-xs font-bold text-sow-grey uppercase border-b border-sow-border pb-1">Variáveis Chave</p>
-                    <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" />
+                    <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" onKeyDown={blockDecimals} />
                     <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" prefix="R$" />
                     
+                    {input.cuttingType === 'PLOTTER' && (
+                         <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" onKeyDown={blockDecimals} suffix="m" />
+                    )}
+
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-sow-grey mb-2 block">Técnica Principal</label>
                         <select 
@@ -94,7 +100,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                         {(!input.embellishments[0] || input.embellishments[0].type === 'SILK') && (
                             <div className="grid grid-cols-2 gap-2">
                                 <InputGroup label="Custo Tela" name="setup" value={input.embellishments[0]?.printSetupCost || 0} onChange={(e) => updateFirstEmbellishment('printSetupCost', parseFloat(e.target.value), input, setInput)} type="number" prefix="R$" />
-                                <InputGroup label="Nº Cores" name="colors" value={input.embellishments[0]?.printColors || 1} onChange={(e) => updateFirstEmbellishment('printColors', parseFloat(e.target.value), input, setInput)} type="number" step="1" />
+                                <InputGroup label="Nº Cores" name="colors" value={input.embellishments[0]?.printColors || 1} onChange={(e) => updateFirstEmbellishment('printColors', parseFloat(e.target.value), input, setInput)} type="number" step="1" onKeyDown={blockDecimals} />
                             </div>
                         )}
                         {input.embellishments[0]?.type === 'DTF' && (
@@ -110,10 +116,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                     <div className="flex justify-between items-center">
                         <span className="text-xs text-sow-grey uppercase font-bold">Custo Total</span>
                         <span className="font-mono font-bold text-sow-dark">{result ? formatCurrency(result.totalProductionCost) : '-'}</span>
-                    </div>
-                     <div className="flex justify-between items-center">
-                        <span className="text-xs text-sow-grey uppercase font-bold">Preço Sugerido</span>
-                        <span className="font-mono font-bold text-sow-dark text-lg">{result ? formatCurrency(result.suggestedSalePrice) : '-'}</span>
                     </div>
                     <div className="flex justify-between items-center bg-sow-green/10 p-2 rounded">
                         <span className="text-xs text-sow-green uppercase font-bold">Lucro Líquido</span>
@@ -134,7 +136,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                     <div className="p-2 bg-sow-green/10 rounded-lg"><Scale className="w-6 h-6 text-sow-green" /></div>
                     <h2 className="text-2xl font-bold font-helvetica tracking-tight">Comparador de Estratégias</h2>
                 </div>
-                <p className="text-sow-grey text-sm">Simule dois cenários paralelamente (Ex: Silk vs Digital) e decida qual protege melhor sua margem.</p>
+                <p className="text-sow-grey text-sm">Simule dois cenários paralelamente.</p>
             </div>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
@@ -143,10 +145,9 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                 </div>
 
                 <div className="lg:col-span-4 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
-                    {/* CORREÇÃO DO GRÁFICO: Garantindo altura explícita para o container */}
-                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex flex-col min-h-[350px]">
+                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex flex-col">
                         <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica">Comparativo Visual (Por Peça)</h4>
-                        <div className="flex-1 w-full min-h-[250px]">
+                        <div className="w-full h-64">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#545454'}} />
