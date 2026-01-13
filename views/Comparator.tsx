@@ -3,7 +3,6 @@ import { Scale, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
-// CORREÇÃO: O caminho correto agora é este
 import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult } from '../types';
 
@@ -67,17 +66,17 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setInput: React.Dispatch<React.SetStateAction<ProductInput>>,
         result: CalculationResult | null
     ) => (
-        <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-sm overflow-hidden min-h-[500px]`}>
-            <div className={`p-4 border-b border-sow-border ${colorClass} bg-opacity-5 flex items-center justify-between`}>
-                <h3 className="font-bold text-sow-dark font-helvetica uppercase tracking-wider">{title}</h3>
-                <div className="text-xs font-bold px-2 py-1 bg-white rounded border border-sow-border shadow-sm">
+        <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-soft overflow-hidden min-h-[500px]`}>
+            <div className={`p-4 border-b border-sow-border ${colorClass} bg-opacity-10 flex items-center justify-between`}>
+                <h3 className="font-helvetica font-bold text-sow-black uppercase tracking-wider">{title}</h3>
+                <div className="text-xs font-montserrat font-bold px-3 py-1 bg-white rounded-lg border border-sow-border shadow-sm text-sow-black">
                     Lote: {input.batchSize} pçs
                 </div>
             </div>
 
             <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                 <div className="space-y-4">
-                    <p className="text-xs font-bold text-sow-grey uppercase border-b border-sow-border pb-1">Variáveis Chave</p>
+                    <p className="text-xs font-montserrat font-bold text-sow-grey uppercase border-b border-sow-border pb-2">Variáveis Chave</p>
                     <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" onKeyDown={blockDecimals} />
                     <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" prefix="R$" />
                     
@@ -85,12 +84,12 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                          <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" onKeyDown={blockDecimals} suffix="m" />
                     )}
 
-                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-sow-grey mb-2 block">Técnica Principal</label>
+                    <div className="bg-sow-light p-4 rounded-xl border border-sow-border">
+                        <label className="text-[11px] font-bold uppercase tracking-wide text-sow-grey mb-2 block">Técnica Principal</label>
                         <select 
                             value={input.embellishments[0]?.type || 'SILK'} 
                             onChange={(e) => updateFirstEmbellishment('type', e.target.value, input, setInput)}
-                            className="w-full mb-3 bg-white border border-sow-border text-sm rounded p-2 outline-none focus:ring-1 focus:ring-sow-green"
+                            className="w-full mb-3 bg-white border border-sow-border text-sm font-montserrat font-medium rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-sow-green"
                         >
                             <option value="SILK">Silk Screen</option>
                             <option value="DTF">DTF / Digital</option>
@@ -98,7 +97,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                         </select>
                         
                         {(!input.embellishments[0] || input.embellishments[0].type === 'SILK') && (
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <InputGroup label="Custo Tela" name="setup" value={input.embellishments[0]?.printSetupCost || 0} onChange={(e) => updateFirstEmbellishment('printSetupCost', parseFloat(e.target.value), input, setInput)} type="number" prefix="R$" />
                                 <InputGroup label="Nº Cores" name="colors" value={input.embellishments[0]?.printColors || 1} onChange={(e) => updateFirstEmbellishment('printColors', parseFloat(e.target.value), input, setInput)} type="number" step="1" onKeyDown={blockDecimals} />
                             </div>
@@ -114,12 +113,12 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
                 <div className="mt-6 pt-6 border-t border-sow-border space-y-3">
                     <div className="flex justify-between items-center">
-                        <span className="text-xs text-sow-grey uppercase font-bold">Custo Total</span>
-                        <span className="font-mono font-bold text-sow-dark">{result ? formatCurrency(result.totalProductionCost) : '-'}</span>
+                        <span className="text-xs text-sow-grey uppercase font-bold font-montserrat">Custo Total</span>
+                        <span className="font-mono font-bold text-sow-black">{result ? formatCurrency(result.totalProductionCost) : '-'}</span>
                     </div>
-                    <div className="flex justify-between items-center bg-sow-green/10 p-2 rounded">
-                        <span className="text-xs text-sow-green uppercase font-bold">Lucro Líquido</span>
-                        <span className="font-mono font-bold text-sow-green">{result ? formatCurrency(result.netProfitUnit) : '-'}</span>
+                    <div className="flex justify-between items-center bg-sow-green/10 p-3 rounded-lg">
+                        <span className="text-xs text-sow-green uppercase font-bold font-montserrat">Lucro Líquido</span>
+                        <span className="font-mono font-bold text-sow-green text-lg">{result ? formatCurrency(result.netProfitUnit) : '-'}</span>
                     </div>
                 </div>
             </div>
@@ -130,50 +129,56 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     const profitDiff = resultA && resultB ? Math.abs(resultA.netProfitUnit - resultB.netProfitUnit) : 0;
 
     return (
-        <div className="h-full flex flex-col font-sans overflow-hidden">
+        <div className="h-full flex flex-col font-montserrat overflow-hidden">
             <div className="mb-6 shrink-0">
-                <div className="flex items-center gap-3 text-sow-dark mb-1">
+                <div className="flex items-center gap-3 text-sow-black mb-1">
                     <div className="p-2 bg-sow-green/10 rounded-lg"><Scale className="w-6 h-6 text-sow-green" /></div>
-                    <h2 className="text-2xl font-bold font-helvetica tracking-tight">Comparador de Estratégias</h2>
+                    <h2 className="text-2xl font-helvetica font-bold tracking-tight">Comparador de Estratégias</h2>
                 </div>
-                <p className="text-sow-grey text-sm">Simule dois cenários paralelamente.</p>
+                <p className="text-sow-grey text-sm font-medium">Simule dois cenários paralelamente e descubra qual protege melhor sua margem.</p>
             </div>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
                 <div className="lg:col-span-4 h-full min-h-0">
-                    {renderScenarioColumn('Cenário A', 'bg-gray-100', scenarioA, setScenarioA, resultA)}
+                    {renderScenarioColumn('Cenário A', 'bg-gray-200', scenarioA, setScenarioA, resultA)}
                 </div>
 
                 <div className="lg:col-span-4 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
-                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex flex-col">
-                        <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica">Comparativo Visual (Por Peça)</h4>
+                    {/* CONTAINER DO GRÁFICO (Altura fixa para funcionar) */}
+                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex flex-col min-h-[350px]">
+                        <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica tracking-wide">Comparativo Visual (Por Peça)</h4>
                         <div className="w-full h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#545454'}} />
+                                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} barGap={8}>
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#545454', fontFamily: 'Montserrat'}} />
                                     <YAxis hide />
                                     <Tooltip 
                                         cursor={{fill: '#f8f9fa'}}
                                         formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+                                        contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', fontFamily: 'Montserrat' }}
                                     />
-                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                                    <Bar dataKey="A" name="Cenário A" fill="#545454" radius={[4, 4, 0, 0]} barSize={30} />
-                                    <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} barSize={30} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px', fontFamily: 'Montserrat' }} />
+                                    <Bar dataKey="A" name="Cenário A" fill="#545454" radius={[4, 4, 0, 0]} barSize={24} />
+                                    <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} barSize={24} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    <div className="bg-sow-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0 mt-auto">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-32 h-32" /></div>
-                        <h3 className="text-sow-green font-bold uppercase tracking-widest text-xs mb-2">Veredito Financeiro</h3>
+                    {/* VEREDITO FINANCEIRO CORRIGIDO */}
+                    <div className="bg-white border-2 border-sow-green p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0 mt-auto">
+                        <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingUp className="w-32 h-32 text-sow-green" /></div>
+                        
+                        <h3 className="text-sow-green font-helvetica font-bold uppercase tracking-widest text-xs mb-2">Veredito Financeiro</h3>
+                        
                         <div className="flex items-center gap-3 mb-4">
-                            <span className="text-3xl font-bold font-helvetica">Vence: Cenário {winner}</span>
-                            <CheckCircle2 className="text-sow-green w-6 h-6" />
+                            {/* CORREÇÃO: Texto Preto para dar contraste no fundo claro */}
+                            <span className="text-4xl font-helvetica font-bold text-sow-black">Vence: <span className="text-sow-green">Cenário {winner}</span></span>
+                            <CheckCircle2 className="text-sow-green w-8 h-8" />
                         </div>
-                        <p className="text-xs text-gray-300 leading-relaxed">
-                            Vantagem de <strong className="text-white">{formatCurrency(profitDiff)}</strong> por peça. 
+                        
+                        <p className="text-sm text-sow-grey font-medium leading-relaxed">
+                            Vantagem de <strong className="text-sow-black bg-sow-green/20 px-1 rounded">{formatCurrency(profitDiff)}</strong> de lucro a mais por peça. 
                         </p>
                     </div>
                 </div>

@@ -92,10 +92,17 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
     const PRODUCT_CATEGORIES = ['Camiseta Oversized', 'Camiseta Streetwear', 'Camiseta Casual', 'Camiseta Slim', 'Camiseta Feminina', 'Outro'];
 
+    // Estilo para botões de seleção (MANUAL vs PLOTTER)
+    const getSelectionButtonClass = (isActive: boolean) => 
+        `flex-1 py-2.5 text-xs font-montserrat font-bold rounded-lg border transition-all duration-200 ${
+            isActive 
+            ? 'bg-sow-black text-white border-sow-black shadow-md' // Ativo: Preto/Branco (Alto contraste)
+            : 'bg-white text-sow-grey border-sow-border hover:bg-gray-50' // Inativo: Cinza visível
+        }`;
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
         <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
-            {/* Blocos de Input (Mantidos iguais, só ajustando espaçamento) */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                 <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
                 <div className="space-y-3">
@@ -115,12 +122,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                   <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
                       <label className="text-[11px] font-montserrat font-bold uppercase tracking-wide text-sow-grey mb-2 block pl-1">Método de Corte</label>
                       <div className="flex gap-2 mb-3">
-                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL'}))} className={`flex-1 py-2 text-xs font-montserrat font-semibold rounded-lg border transition-all ${input.cuttingType === 'MANUAL' ? 'bg-sow-black text-sow-green border-sow-black' : 'bg-sow-white text-sow-grey border-sow-border hover:border-sow-grey'}`}>Manual (R$ {settings.serviceCosts.cuttingManual.toFixed(2)})</button>
-                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'PLOTTER'}))} className={`flex-1 py-2 text-xs font-montserrat font-semibold rounded-lg border transition-all ${input.cuttingType === 'PLOTTER' ? 'bg-sow-black text-sow-green border-sow-black' : 'bg-sow-white text-sow-grey border-sow-border hover:border-sow-grey'}`}>Plotter/Audaces (R$ {settings.serviceCosts.cuttingPlotter.toFixed(2)})</button>
+                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL')}>Manual (R$ {settings.serviceCosts.cuttingManual.toFixed(2)})</button>
+                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'PLOTTER')}>Plotter/Audaces (R$ {settings.serviceCosts.cuttingPlotter.toFixed(2)})</button>
                       </div>
                       
                       {input.cuttingType === 'PLOTTER' && (
-                          <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
+                          <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3 animate-fade-in">
                               <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} suffix="m" />
                               <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
                               <div className="col-span-2 text-[10px] text-sow-grey font-montserrat">Custo Papel Base: R$ {settings.serviceCosts.plotterPaper.toFixed(2)}/m</div>
@@ -178,8 +185,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                                   {item.silkSize !== 'CUSTOM' && <p className="text-[10px] text-sow-green font-montserrat font-bold text-center mt-1 flex items-center justify-center gap-1"><Info className="w-3 h-3"/> Valores automáticos do Banco de Preços</p>}
                               </div>
                           )}
-                          {/* (Outros tipos de estampa mantidos...) */}
-                           {item.type === 'DTF' && (
+
+                          {item.type === 'DTF' && (
                               <div className="grid grid-cols-2 gap-3">
                                   <InputGroup label="Metros Usados (Lote)" name={`dtf_meters_${item.id}`} value={item.dtfMetersUsed || 0} onChange={(e) => updateEmbellishment(item.id, 'dtfMetersUsed', parseFloat(e.target.value))} type="number" step="0.1" />
                                   <div className="bg-sow-white p-2 rounded-lg border border-sow-border text-[10px] text-sow-grey font-montserrat flex flex-col justify-center pl-3">
@@ -188,6 +195,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                                   </div>
                               </div>
                           )}
+
                           {item.type === 'BORDADO' && (
                                <div className="grid grid-cols-2 gap-3">
                                   <InputGroup label="Milheiros de Pontos" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', parseFloat(e.target.value))} type="number" step="0.1" />
@@ -230,7 +238,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
                 <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col">
                     <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-6 tracking-wider">Composição do Preço</h3>
-                    {/* CORREÇÃO: Adicionado altura explícita (h-64) para o gráfico aparecer */}
                     <div className="w-full h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
