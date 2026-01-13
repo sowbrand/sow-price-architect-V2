@@ -3,7 +3,6 @@ import { Scale, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
-// AQUI ESTAVA O ERRO: Agora importamos do lugar certo
 import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult } from '../types';
 
@@ -30,7 +29,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     }, [scenarioA, scenarioB, settings]);
 
     const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+        e: { target: { name: string; value: string; type: string } } | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
         setFunc: React.Dispatch<React.SetStateAction<ProductInput>>
     ) => {
         const { name, value, type } = e.target;
@@ -66,7 +65,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         setInput: React.Dispatch<React.SetStateAction<ProductInput>>,
         result: CalculationResult | null
     ) => (
-        <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-sm overflow-hidden`}>
+        <div className={`flex flex-col h-full bg-white rounded-xl border border-sow-border shadow-sm overflow-hidden min-h-[500px]`}>
             <div className={`p-4 border-b border-sow-border ${colorClass} bg-opacity-5 flex items-center justify-between`}>
                 <h3 className="font-bold text-sow-dark font-helvetica uppercase tracking-wider">{title}</h3>
                 <div className="text-xs font-bold px-2 py-1 bg-white rounded border border-sow-border shadow-sm">
@@ -78,7 +77,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                 <div className="space-y-4">
                     <p className="text-xs font-bold text-sow-grey uppercase border-b border-sow-border pb-1">Variáveis Chave</p>
                     <InputGroup label="Qtd. Lote" name="batchSize" value={input.batchSize} onChange={(e) => handleChange(e, setInput)} type="number" step="1" min="1" />
-                    <InputGroup label="Preço Malha (R$/kg)" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" />
+                    <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={(e) => handleChange(e, setInput)} type="number" prefix="R$" />
                     
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-sow-grey mb-2 block">Técnica Principal</label>
@@ -120,12 +119,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                         <span className="text-xs text-sow-green uppercase font-bold">Lucro Líquido</span>
                         <span className="font-mono font-bold text-sow-green">{result ? formatCurrency(result.netProfitUnit) : '-'}</span>
                     </div>
-                     {result && result.warnings.length > 0 && (
-                        <div className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 flex gap-1 items-start">
-                            <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-                            <span>{result.warnings[0]}</span>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -150,22 +143,10 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                 </div>
 
                 <div className="lg:col-span-4 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
-                    <div className="bg-sow-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-32 h-32" /></div>
-                        <h3 className="text-sow-green font-bold uppercase tracking-widest text-xs mb-2">Melhor Opção Financeira</h3>
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="text-4xl font-bold font-helvetica">Cenário {winner}</span>
-                            <CheckCircle2 className="text-sow-green w-8 h-8" />
-                        </div>
-                        <p className="text-sm text-gray-300 leading-relaxed">
-                            O Cenário {winner} entrega <strong>{formatCurrency(profitDiff)} a mais de lucro</strong> por peça. 
-                            Em um lote de {winner === 'A' ? scenarioA.batchSize : scenarioB.batchSize} peças, isso representa <strong className="text-white">{formatCurrency(profitDiff * (winner === 'A' ? scenarioA.batchSize : scenarioB.batchSize))}</strong> de diferença no caixa.
-                        </p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex-1 min-h-[300px] flex flex-col">
+                    {/* CORREÇÃO DO GRÁFICO: Garantindo altura explícita para o container */}
+                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-sm flex flex-col min-h-[350px]">
                         <h4 className="text-xs font-bold text-sow-grey uppercase mb-6 font-helvetica">Comparativo Visual (Por Peça)</h4>
-                        <div className="flex-1 w-full">
+                        <div className="flex-1 w-full min-h-[250px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#545454'}} />
@@ -176,11 +157,23 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                                         contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
                                     />
                                     <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                                    <Bar dataKey="A" name="Cenário A" fill="#545454" radius={[4, 4, 0, 0]} barSize={20} />
-                                    <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} barSize={20} />
+                                    <Bar dataKey="A" name="Cenário A" fill="#545454" radius={[4, 4, 0, 0]} barSize={30} />
+                                    <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} barSize={30} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
+                    </div>
+
+                    <div className="bg-sow-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden shrink-0 mt-auto">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-32 h-32" /></div>
+                        <h3 className="text-sow-green font-bold uppercase tracking-widest text-xs mb-2">Veredito Financeiro</h3>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-3xl font-bold font-helvetica">Vence: Cenário {winner}</span>
+                            <CheckCircle2 className="text-sow-green w-6 h-6" />
+                        </div>
+                        <p className="text-xs text-gray-300 leading-relaxed">
+                            Vantagem de <strong className="text-white">{formatCurrency(profitDiff)}</strong> por peça. 
+                        </p>
                     </div>
                 </div>
 
