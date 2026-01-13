@@ -24,20 +24,24 @@ export const App: React.FC = () => {
         }
     };
 
+    const isDashboard = mode === CalculationMode.DASHBOARD;
+
     return (
         <div className="flex h-screen bg-sow-white font-montserrat overflow-hidden text-sow-grey">
-            <Sidebar currentMode={mode} setMode={setMode} />
+            {/* A Sidebar só aparece se NÃO for o Dashboard */}
+            {!isDashboard && <Sidebar currentMode={mode} setMode={setMode} />}
             
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-sow-white">
-                {/* Header Mobile - Só aparece em telas pequenas */}
-                <div className="lg:hidden h-16 border-b border-sow-border flex items-center justify-center bg-sow-white shrink-0 z-20">
-                    <h1 className="font-helvetica text-xl tracking-tight">
-                        <span className="font-normal text-sow-black">sow</span>
-                        <span className="font-bold text-sow-black">brand</span>
-                    </h1>
-                </div>
+                {/* Header Mobile - Escondido no dashboard desktop, visível em telas pequenas */}
+                {!isDashboard && (
+                    <div className="lg:hidden h-16 border-b border-sow-border flex items-center justify-center bg-sow-white shrink-0 z-20">
+                         <h1 className="text-xl tracking-tighter leading-none select-none">
+                            <span className="font-helvetica font-light text-sow-black">sow</span>
+                            <span className="font-helvetica font-bold text-sow-black">brand</span>
+                        </h1>
+                    </div>
+                )}
 
-                {/* Área de Conteúdo - Fundo Branco e Espaçamento Elegante */}
                 <div className="flex-1 p-4 lg:p-8 overflow-hidden relative">
                     <div className="h-full w-full max-w-[1600px] mx-auto animate-fade-in">
                         {renderContent()}

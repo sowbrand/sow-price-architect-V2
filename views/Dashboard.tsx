@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Scale, Target } from 'lucide-react';
+import { Calculator, Scale, Target, Settings } from 'lucide-react';
 import { CalculationMode } from '../types';
 
 interface DashboardProps {
@@ -7,45 +7,42 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ setMode }) => {
+  const buttons = [
+    { mode: CalculationMode.CALCULATOR, icon: Calculator, label: 'Precificação', colorBg: 'bg-sow-green/10', colorIcon: 'text-sow-green' },
+    { mode: CalculationMode.COMPARATOR, icon: Scale, label: 'Comparador', colorBg: 'bg-pink-50', colorIcon: 'text-pink-500' },
+    { mode: CalculationMode.REVERSE, icon: Target, label: 'Eng. Reversa', colorBg: 'bg-indigo-50', colorIcon: 'text-indigo-500' },
+    { mode: CalculationMode.SETTINGS, icon: Settings, label: 'Configurações', colorBg: 'bg-gray-100', colorIcon: 'text-sow-grey' },
+  ];
+
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center max-w-5xl mx-auto font-sans">
-      <div className="mb-12">
-        <h1 className="font-helvetica font-bold text-6xl tracking-tighter text-black">
-          SOW<span className="text-sow-green">BRAND</span>
+    <div className="flex flex-col items-center justify-center h-full text-center max-w-6xl mx-auto font-sans">
+      {/* Logo Principal SOWBRAND conforme Manual */}
+      <div className="mb-16">
+        <h1 className="text-6xl lg:text-7xl tracking-tighter leading-none select-none">
+            <span className="font-helvetica font-light text-sow-black">sow</span>
+            <span className="font-helvetica font-bold text-sow-black">brand</span>
         </h1>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full px-8">
-          <button 
-            onClick={() => setMode(CalculationMode.CALCULATOR)} 
-            className="bg-white hover:bg-gray-50 border border-sow-border p-10 rounded-3xl transition-all group hover:border-sow-green hover:shadow-xl hover:-translate-y-2 flex flex-col items-center justify-center h-64"
-          >
-              <div className="w-20 h-20 bg-sow-green/10 rounded-full flex items-center justify-center mb-6 group-hover:bg-sow-green transition-colors">
-                <Calculator className="w-10 h-10 text-sow-green group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="text-xl font-bold text-sow-dark font-helvetica uppercase tracking-wide">Precificação</h3>
-          </button>
-
-          <button 
-            onClick={() => setMode(CalculationMode.COMPARATOR)} 
-            className="bg-white hover:bg-gray-50 border border-sow-border p-10 rounded-3xl transition-all group hover:border-sow-green hover:shadow-xl hover:-translate-y-2 flex flex-col items-center justify-center h-64"
-          >
-              <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-pink-500 transition-colors">
-                <Scale className="w-10 h-10 text-pink-500 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="text-xl font-bold text-sow-dark font-helvetica uppercase tracking-wide">Comparador</h3>
-          </button>
-
-          <button 
-            onClick={() => setMode(CalculationMode.REVERSE)} 
-            className="bg-white hover:bg-gray-50 border border-sow-border p-10 rounded-3xl transition-all group hover:border-sow-green hover:shadow-xl hover:-translate-y-2 flex flex-col items-center justify-center h-64"
-          >
-              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-indigo-500 transition-colors">
-                <Target className="w-10 h-10 text-indigo-500 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="text-xl font-bold text-sow-dark font-helvetica uppercase tracking-wide">Eng. Reversa</h3>
-          </button>
+      {/* Grid de 4 Botões */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full px-4">
+          {buttons.map((btn) => {
+            const Icon = btn.icon;
+            return (
+              <button 
+                key={btn.label}
+                onClick={() => setMode(btn.mode)} 
+                className="bg-white border border-sow-border p-8 rounded-3xl transition-all group hover:border-sow-green hover:shadow-soft hover:-translate-y-1 flex flex-col items-center justify-center h-56"
+              >
+                  <div className={`w-16 h-16 ${btn.colorBg} rounded-full flex items-center justify-center mb-6 transition-colors group-hover:bg-sow-green`}>
+                    <Icon className={`w-8 h-8 ${btn.colorIcon} group-hover:text-white transition-colors`} />
+                  </div>
+                  <h3 className="text-lg font-helvetica font-bold text-sow-black uppercase tracking-wider">{btn.label}</h3>
+              </button>
+            );
+          })}
       </div>
+      <p className="mt-12 text-sm text-sow-grey/60 font-montserrat">Sistema de Inteligência de Preços v6.0</p>
     </div>
   );
 };
