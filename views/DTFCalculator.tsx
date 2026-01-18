@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw, Shirt, AlertTriangle, Download } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
-import html2canvas from 'html2canvas'; // Certifique-se de ter instalado
+import html2canvas from 'html2canvas'; // Certifique-se de ter instalado com --legacy-peer-deps
 import type { SettingsData } from '../types';
 
 interface DTFCalculatorProps {
@@ -42,7 +42,8 @@ interface Point {
   y: number;
 }
 
-// Função auxiliar para arredondamento preciso
+// Função auxiliar para arredondamento preciso (2 casas decimais)
+// Isso é CRUCIAL para evitar que 57.0000001 seja considerado maior que 57
 const round = (num: number) => Math.round(num * 100) / 100;
 
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
@@ -84,9 +85,11 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const ROLL_WIDTH_CM = 58; 
   const PAPER_MARGIN_CM = 1; 
   const ITEM_GAP_CM = 1.0; 
+  
+  // LIMITES ABSOLUTOS: Tudo deve estar entre 1.00 e 57.00
   const MIN_X = PAPER_MARGIN_CM; 
   const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; 
-  const MAX_W = MAX_X - MIN_X;
+  const MAX_W = MAX_X - MIN_X; // Largura útil máxima (56cm)
 
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +109,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
 
     setIsExporting(true);
     try {
-        // Aguarda um momento para garantir renderização
+        // Pequeno delay para garantir renderização
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const canvas = await html2canvas(element, {
@@ -122,13 +125,13 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         link.click();
     } catch (error) {
         console.error("Erro ao gerar imagem", error);
-        alert("Erro ao baixar a imagem.");
+        alert("Erro ao baixar a imagem. Verifique o console.");
     } finally {
         setIsExporting(false);
     }
   };
 
-  // --- CRUD ---
+  // --- CRUD (Gestão de Itens) ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
     const newGroup: ShirtGroup = {
@@ -176,7 +179,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }));
   };
 
-  // --- ALGORITMO TOLERÂNCIA ZERO ---
+  // --- ALGORITMO "TOLERÂNCIA ZERO" (Bin Packing Otimizado) ---
   useEffect(() => {
     let errorFound = false;
     let itemsToPlace: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
@@ -195,14 +198,20 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         });
     });
 
+    // 2. Ordenação: ALTURA Decrescente (Crucial para preencher verticalmente)
     itemsToPlace.sort((a, b) => Math.max(b.h, b.w) - Math.max(a.h, a.w));
 
     let placedRects: PlacedItem[] = [];
 
+    // Função de Verificação de Colisão RÍGIDA
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
+        // [TRAVA 1] Limite Direito Absoluto (Área Morta)
+        // Se a posição final (x+w) for maior que 57.00, PROIBIDO.
         if (round(x + w) > MAX_X) return true; 
 
+        // [TRAVA 2] Colisão com outros itens
         for (let r of placedRects) {
+            // Lógica de colisão considerando o GAP como parte do corpo do item existente
             const rRight = r.x + r.width;
             const rBottom = r.y + r.height;
             const myRight = x + w;
@@ -220,36 +229,45 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
+    // Buscador de Melhor Posição
     const findBestPosition = (w: number, h: number) => {
-        if (w > MAX_W) return null;
+        if (w > MAX_W) return null; // Peça maior que a área útil
 
+        // Gera candidatos: (MargemEsq, 0) E (Direita de cada item, Topo de cada item)
         let candidates: Point[] = [{ x: MIN_X, y: 0 }];
         
         placedRects.forEach(r => {
+            // Candidato à direita (mantendo Y)
             const rightX = round(r.x + r.width + ITEM_GAP_CM);
             if (round(rightX + w) <= MAX_X) {
                 candidates.push({ x: rightX, y: r.y });
             }
+            
+            // Candidato abaixo (mantendo X)
             const bottomY = round(r.y + r.height + ITEM_GAP_CM);
             candidates.push({ x: r.x, y: bottomY });
+            
+            // Candidato reset de linha (encostado na margem esquerda, na altura do item)
             candidates.push({ x: MIN_X, y: bottomY });
         });
 
-        candidates = candidates.filter(p => p.x + w <= MAX_X);
-
+        // Ordena candidatos: PRIORIDADE ABSOLUTA PARA Y (Topo)
         candidates.sort((a, b) => {
-            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
-            return a.x - b.x; 
+            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; // Se Y for diferente, menor Y ganha
+            return a.x - b.x; // Se Y for igual, menor X ganha
         });
 
+        // Testa o primeiro que der certo
         for (let p of candidates) {
             if (!checkOverlap(p.x, p.y, w, h)) return { x: p.x, y: p.y };
         }
         
+        // Se não achou, coloca no finalzão absoluto
         const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
         return { x: MIN_X, y: round(lastY) };
     };
 
+    // 3. Execução
     itemsToPlace.forEach(item => {
         const posNormal = findBestPosition(item.w, item.h);
         const posRotated = findBestPosition(item.h, item.w);
@@ -257,6 +275,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         let finalPos;
         let isRotated = false;
 
+        // Se nenhum couber (erro crítico de tamanho)
         if (!posNormal && !posRotated) {
             errorFound = true;
             placedRects.push({
@@ -266,6 +285,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             return;
         }
 
+        // Lógica de Decisão: Quem fica mais no topo (Menor Y)?
         if (posNormal && !posRotated) {
             finalPos = posNormal;
             isRotated = false;
@@ -273,13 +293,15 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             finalPos = posRotated;
             isRotated = true;
         } else if (posNormal && posRotated) {
-            if (posRotated.y < posNormal.y - 0.1) {
+            // Ambos cabem.
+            if (posRotated.y < posNormal.y - 0.1) { // Rotação sobe significativamente?
                 finalPos = posRotated;
                 isRotated = true;
             } else if (posRotated.y > posNormal.y + 0.1) {
                 finalPos = posNormal;
                 isRotated = false;
             } else {
+                // Y igual. Quem fica mais a esquerda?
                 if (posRotated.x < posNormal.x) {
                     finalPos = posRotated;
                     isRotated = true;
@@ -304,10 +326,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         }
     });
 
+    // 4. Totais
     const maxY = placedRects.filter(r => !r.error).reduce((max, r) => Math.max(max, r.y + r.height), 0);
     const finalMeters = maxY / 100;
     const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
 
+    // 5. Preços
     let currentPrice = 60; 
     let currentTier = 'Tabela Base (até 10m)';
     if (safeMeters > 20) { currentPrice = 45; currentTier = 'Atacado Super (> 20m)'; }
