@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw, Shirt, AlertTriangle, Download } from 'lucide-react';
+import { Printer, Plus, Trash2, Box, RefreshCw, Shirt, AlertTriangle, Download } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import html2canvas from 'html2canvas'; 
@@ -9,7 +9,7 @@ interface DTFCalculatorProps {
   settings: SettingsData;
 }
 
-// --- DATA STRUCTURES ---
+// --- ESTRUTURAS DE DADOS ---
 interface PrintLocation {
   id: string;
   description: string;
@@ -42,12 +42,10 @@ interface Point {
   y: number;
 }
 
-// Precision Rounding Helper
-const round = (num: number) => Math.round(num * 100) / 100;
-
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const GROUP_COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
+  // Dados Iniciais
   const [shirtGroups, setShirtGroups] = useState<ShirtGroup[]>([
     {
       id: '1',
@@ -80,15 +78,20 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [hasErrors, setHasErrors] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
-  // --- PHYSICAL CONSTRAINTS ---
+  // --- CONFIGURAÇÕES FÍSICAS "BLINDADAS" ---
   const ROLL_WIDTH_CM = 58; 
-  const PAPER_MARGIN_CM = 1; 
+  const VISUAL_MARGIN_CM = 1; // Margem Vermelha visível
   const ITEM_GAP_CM = 1.0; 
   
-  // Absolute Limits
-  const MIN_X = PAPER_MARGIN_CM; 
-  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; 
-  const MAX_W = MAX_X - MIN_X;
+  // *** A SOLUÇÃO ***
+  // Definimos uma "Margem de Cálculo" ligeiramente maior que a visual (1.05cm)
+  // Isso cria uma barreira invisível de 0.5mm que impede erros de pixel.
+  const CALC_MARGIN_OFFSET = 0.05; 
+  
+  // Limites Matemáticos para o Algoritmo (Mais restritos que o visual)
+  const MIN_X = VISUAL_MARGIN_CM + CALC_MARGIN_OFFSET; 
+  const MAX_X = ROLL_WIDTH_CM - (VISUAL_MARGIN_CM + CALC_MARGIN_OFFSET);
+  const MAX_W = MAX_X - MIN_X; // Largura máxima real de uma peça
 
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,130 +104,105 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }
   }, []);
 
-  // --- DOWNLOAD FUNCTION ---
+  // --- DOWNLOAD ---
   const handleDownloadImage = async () => {
     const element = document.getElementById('print-area');
     if (!element) return;
 
     setIsExporting(true);
     try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        await new Promise(resolve => setTimeout(resolve, 200)); // Espera renderizar
         const canvas = await html2canvas(element, {
-            scale: 2, 
+            scale: 2,
             backgroundColor: '#ffffff',
             logging: false,
             useCORS: true
         });
-        
         const link = document.createElement('a');
-        link.download = `SowPrice_Layout_${totalMeters.toFixed(2)}m.png`;
+        link.download = `Layout_DTF_${totalMeters.toFixed(2)}m.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     } catch (error) {
-        console.error("Error generating image", error);
-        alert("Error downloading image.");
+        console.error("Erro", error);
+        alert("Erro ao baixar imagem.");
     } finally {
         setIsExporting(false);
     }
   };
 
-  // --- CRUD OPERATIONS ---
+  // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
-    const newGroup: ShirtGroup = {
+    setShirtGroups([...shirtGroups, {
       id: Math.random().toString(36).substr(2, 9),
       name: `Nova Camiseta ${shirtGroups.length + 1}`,
       quantity: 10,
       color: nextColor,
       prints: [{ id: Math.random().toString(36), description: 'Estampa 1', width: 10, height: 10 }]
-    };
-    setShirtGroups([...shirtGroups, newGroup]);
+    }]);
   };
 
-  const removeShirtGroup = (groupId: string) => {
-    setShirtGroups(shirtGroups.filter(g => g.id !== groupId));
+  const removeShirtGroup = (id: string) => setShirtGroups(shirtGroups.filter(g => g.id !== id));
+  
+  const updateShirtGroup = (id: string, field: keyof ShirtGroup, value: any) => {
+    setShirtGroups(shirtGroups.map(g => (g.id === id ? { ...g, [field]: value } : g)));
   };
 
-  const updateShirtGroup = (groupId: string, field: keyof ShirtGroup, value: any) => {
-    setShirtGroups(shirtGroups.map(g => (g.id === groupId ? { ...g, [field]: value } : g)));
-  };
-
-  const addPrintToGroup = (groupId: string) => {
-    setShirtGroups(shirtGroups.map(group => {
-        if (group.id !== groupId) return group;
-        return {
-            ...group,
-            prints: [...group.prints, { id: Math.random().toString(36), description: 'Nova Estampa', width: 10, height: 10 }]
-        };
+  const addPrintToGroup = (gid: string) => {
+    setShirtGroups(shirtGroups.map(g => g.id !== gid ? g : {
+        ...g, prints: [...g.prints, { id: Math.random().toString(36), description: 'Nova', width: 10, height: 10 }]
     }));
   };
 
-  const removePrintFromGroup = (groupId: string, printId: string) => {
-    setShirtGroups(shirtGroups.map(group => {
-        if (group.id !== groupId) return group;
-        return { ...group, prints: group.prints.filter(p => p.id !== printId) };
+  const removePrintFromGroup = (gid: string, pid: string) => {
+    setShirtGroups(shirtGroups.map(g => g.id !== gid ? g : {
+        ...g, prints: g.prints.filter(p => p.id !== pid)
     }));
   };
 
-  const updatePrint = (groupId: string, printId: string, field: keyof PrintLocation, value: any) => {
-    setShirtGroups(shirtGroups.map(group => {
-        if (group.id !== groupId) return group;
-        return {
-            ...group,
-            prints: group.prints.map(p => (p.id === printId ? { ...p, [field]: value } : p))
-        };
+  const updatePrint = (gid: string, pid: string, field: keyof PrintLocation, value: any) => {
+    setShirtGroups(shirtGroups.map(g => g.id !== gid ? g : {
+        ...g, prints: g.prints.map(p => p.id === pid ? { ...p, [field]: value } : p)
     }));
   };
 
-  // --- OPTIMIZED PACKING ALGORITHM ---
+  // --- ALGORITMO OTIMIZADO V5 (Definitivo) ---
   useEffect(() => {
     let errorFound = false;
-    let itemsToPlace: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
+    let items: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
     
-    // Flatten the list
-    shirtGroups.forEach(group => {
-        group.prints.forEach(print => {
-            for (let i = 0; i < group.quantity; i++) {
-                itemsToPlace.push({ 
-                    w: print.width, 
-                    h: print.height, 
-                    desc: print.description, 
-                    color: group.color,
-                    groupName: group.name
-                });
+    // 1. Flatten
+    shirtGroups.forEach(g => {
+        g.prints.forEach(p => {
+            for (let i = 0; i < g.quantity; i++) {
+                items.push({ w: p.width, h: p.height, desc: p.description, color: g.color, groupName: g.name });
             }
         });
     });
 
-    // **KEY FIX 1: SORT BY HEIGHT DESCENDING**
-    // Sorting by height first is crucial for "shelf" or vertical stacking efficiency.
-    // If heights are equal, sort by width.
-    itemsToPlace.sort((a, b) => {
-        const heightDiff = Math.max(b.h, b.w) - Math.max(a.h, a.w);
-        if (Math.abs(heightDiff) > 0.1) return heightDiff;
-        return Math.max(b.w, b.h) - Math.max(a.w, a.h);
+    // 2. Ordenação Híbrida Inteligente
+    // Prioridade: Altura > Largura. Isso ajuda a preencher faixas verticais melhor.
+    items.sort((a, b) => {
+        const maxDimA = Math.max(a.w, a.h);
+        const maxDimB = Math.max(b.w, b.h);
+        if (maxDimB !== maxDimA) return maxDimB - maxDimA;
+        return (b.w * b.h) - (a.w * a.h); // Desempate por área
     });
 
-    let placedRects: PlacedItem[] = [];
+    let placed: PlacedItem[] = [];
 
-    // Collision Check
+    // Função de Colisão
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // Strict boundary check
-        if (round(x + w) > MAX_X) return true; 
+        // [TRAVA ABSOLUTA] Se passar do limite matemático (que já é menor que o visual), BLOQUEIA.
+        if (x + w > MAX_X) return true;
 
-        for (let r of placedRects) {
-            // Check collision with existing items (+ GAP)
-            const rRight = r.x + r.width;
-            const rBottom = r.y + r.height;
-            const myRight = x + w;
-            const myBottom = y + h;
-
+        for (const r of placed) {
+            // Gap Check: Consideramos o GAP como parte da caixa de colisão do item existente
             if (
-                round(x) < round(rRight + ITEM_GAP_CM) &&
-                round(myRight + ITEM_GAP_CM) > round(r.x) &&
-                round(y) < round(rBottom + ITEM_GAP_CM) &&
-                round(myBottom + ITEM_GAP_CM) > round(r.y)
+                x < r.x + r.width + ITEM_GAP_CM &&
+                x + w + ITEM_GAP_CM > r.x &&
+                y < r.y + r.height + ITEM_GAP_CM &&
+                y + h + ITEM_GAP_CM > r.y
             ) {
                 return true;
             }
@@ -232,121 +210,119 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
-    // Find Best Position Strategy
-    const findBestPosition = (w: number, h: number) => {
-        if (w > MAX_W) return null;
+    // Estratégia "Best Fit" (Melhor Encaixe)
+    const findPos = (w: number, h: number) => {
+        if (w > MAX_W) return null; // Fisicamente impossível
 
-        // **KEY FIX 2: IMPROVED CANDIDATE POINTS**
-        // We test "Bottom-Left" strategy more aggressively
+        let bestY = Infinity;
+        let bestX = Infinity;
+        let found = false;
+
+        // Gera pontos candidatos:
+        // 1. Canto superior esquerdo absoluto (Start)
+        // 2. Imediatamente à direita de cada peça existente
+        // 3. Imediatamente abaixo de cada peça existente
+        // 4. Reset de linha (Margem esquerda, abaixo de cada peça)
         let candidates: Point[] = [{ x: MIN_X, y: 0 }];
         
-        placedRects.forEach(r => {
-            // 1. Right of item
-            const rightX = round(r.x + r.width + ITEM_GAP_CM);
-            if (round(rightX + w) <= MAX_X) {
-                candidates.push({ x: rightX, y: r.y });
-            }
+        placed.forEach(r => {
+            // Direita
+            const rightX = r.x + r.width + ITEM_GAP_CM;
+            if (rightX + w <= MAX_X) candidates.push({ x: rightX, y: r.y });
             
-            // 2. Top of item (technically "bottom" in Y-down coordinates)
-            const bottomY = round(r.y + r.height + ITEM_GAP_CM);
+            // Abaixo
+            const bottomY = r.y + r.height + ITEM_GAP_CM;
             candidates.push({ x: r.x, y: bottomY });
             
-            // 3. Flush Left at this Y level (crucial for filling rows)
+            // Nova Linha
             candidates.push({ x: MIN_X, y: bottomY });
         });
 
-        // Sort candidates: Lowest Y, then Leftmost X
+        // Filtrar candidatos inválidos (fora da largura)
+        candidates = candidates.filter(p => p.x + w <= MAX_X);
+
+        // Ordenar candidatos:
+        // O segredo do Tetris: Queremos o MENOR Y possível.
+        // Se Y for igual, queremos o MENOR X (mais à esquerda).
         candidates.sort((a, b) => {
-            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
-            return a.x - b.x; 
+            if (Math.abs(a.y - b.y) > 0.01) return a.y - b.y;
+            return a.x - b.x;
         });
 
-        // Use the first valid candidate
-        for (let p of candidates) {
-            if (!checkOverlap(p.x, p.y, w, h)) return { x: p.x, y: p.y };
+        // Testar candidatos ordenados
+        for (const p of candidates) {
+            if (!checkOverlap(p.x, p.y, w, h)) {
+                return p;
+            }
         }
-        
-        // Fallback: New row at the very bottom
-        const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
-        return { x: MIN_X, y: round(lastY) };
+
+        // Fallback (fim da fila)
+        const maxY = placed.reduce((max, r) => Math.max(max, r.y + r.height + ITEM_GAP_CM), 0);
+        return { x: MIN_X, y: maxY };
     };
 
-    // Packing Loop
-    itemsToPlace.forEach(item => {
-        // Test Normal Orientation
-        const posNormal = findBestPosition(item.w, item.h);
-        // Test Rotated Orientation
-        const posRotated = findBestPosition(item.h, item.w);
+    items.forEach(item => {
+        // Tenta Normal
+        const posN = findPos(item.w, item.h);
+        // Tenta Rotacionado
+        const posR = findPos(item.h, item.w);
 
-        let finalPos;
-        let isRotated = false;
+        let final = null;
+        let isRot = false;
 
-        if (!posNormal && !posRotated) {
+        if (!posN && !posR) {
+            // Erro Crítico
             errorFound = true;
-            placedRects.push({
-                x: 0, y: 0, width: item.w, height: item.h, description: item.desc, 
-                color: '#ff0000', rotated: false, groupName: item.groupName, error: true
+            placed.push({
+                x: 0, y: 0, width: item.w, height: item.h, description: item.desc,
+                color: '#ff4444', rotated: false, groupName: item.groupName, error: true
             });
             return;
         }
 
-        // Decision Logic: Lowest Y wins. Tie-breaker: Leftmost X.
-        if (posNormal && !posRotated) {
-            finalPos = posNormal;
-            isRotated = false;
-        } else if (!posNormal && posRotated) {
-            finalPos = posRotated;
-            isRotated = true;
-        } else if (posNormal && posRotated) {
-            // Both fit. Which is better?
-            if (posRotated.y < posNormal.y - 0.1) { // Rotated is significantly higher up
-                finalPos = posRotated;
-                isRotated = true;
-            } else if (posRotated.y > posNormal.y + 0.1) { // Normal is higher
-                finalPos = posNormal;
-                isRotated = false;
+        // Lógica de Decisão: Prioriza Altura (Y) menor.
+        if (posN && !posR) { final = posN; isRot = false; }
+        else if (!posN && posR) { final = posR; isRot = true; }
+        else if (posN && posR) {
+            // Ambos cabem. Escolhe o melhor.
+            // Se rotação economiza Y significativo (> 1mm), gira.
+            if (posR.y < posN.y - 0.1) {
+                final = posR; isRot = true;
+            } else if (posN.y < posR.y - 0.1) {
+                final = posN; isRot = false;
             } else {
-                // Same height, check X
-                if (posRotated.x < posNormal.x) {
-                    finalPos = posRotated;
-                    isRotated = true;
-                } else {
-                    finalPos = posNormal;
-                    isRotated = false;
-                }
+                // Y igual. Escolhe o mais à esquerda (X).
+                if (posR.x < posN.x) { final = posR; isRot = true; }
+                else { final = posN; isRot = false; }
             }
         }
 
-        if (finalPos) {
-            placedRects.push({
-                x: finalPos.x,
-                y: finalPos.y,
-                width: isRotated ? item.h : item.w,
-                height: isRotated ? item.w : item.h,
-                description: item.desc,
-                color: item.color,
-                rotated: isRotated,
-                groupName: item.groupName
+        if (final) {
+            placed.push({
+                x: final.x, y: final.y,
+                width: isRot ? item.h : item.w,
+                height: isRot ? item.w : item.h,
+                description: item.desc, color: item.color, rotated: isRot, groupName: item.groupName
             });
         }
     });
 
-    // Metrics
-    const maxY = placedRects.filter(r => !r.error).reduce((max, r) => Math.max(max, r.y + r.height), 0);
-    const finalMeters = maxY / 100;
-    const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
+    // Totais
+    const validItems = placed.filter(i => !i.error);
+    const maxY = validItems.reduce((max, r) => Math.max(max, r.y + r.height), 0);
+    const meters = Math.ceil((maxY / 100) * 100) / 100; // Arredonda 2 casas
+    const safeMeters = meters > 0 ? meters + 0.05 : 0; // +5cm margem técnica de corte
 
-    // Pricing Logic
-    let currentPrice = 60; 
-    let currentTier = 'Tabela Base (até 10m)';
-    if (safeMeters > 20) { currentPrice = 45; currentTier = 'Atacado Super (> 20m)'; }
-    else if (safeMeters > 10) { currentPrice = 50; currentTier = 'Atacado (> 10m)'; }
+    // Preços
+    let price = 60; let tier = 'Tabela Base (até 10m)';
+    if (safeMeters > 20) { price = 45; tier = 'Atacado Super (> 20m)'; }
+    else if (safeMeters > 10) { price = 50; tier = 'Atacado (> 10m)'; }
 
-    setLayout(placedRects);
+    setLayout(placed);
     setTotalMeters(safeMeters);
-    setAppliedPrice(currentPrice);
-    setPriceTier(currentTier);
-    setTotalCost(safeMeters * currentPrice);
+    setAppliedPrice(price);
+    setPriceTier(tier);
+    setTotalCost(safeMeters * price);
     setHasErrors(errorFound);
 
   }, [shirtGroups]);
@@ -356,183 +332,114 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
       <div className="mb-6 shrink-0">
         <div className="flex items-center gap-3 text-sow-black mb-1">
           <div className="p-2 bg-purple-100 rounded-lg"><Printer className="w-6 h-6 text-purple-600" /></div>
-          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador DTF por Camiseta</h2>
+          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador DTF Pro</h2>
         </div>
-        <p className="text-sow-grey text-sm font-medium">
-          Adicione modelos de camisetas e suas estampas. O sistema multiplica e encaixa automaticamente.
-        </p>
+        <p className="text-sow-grey text-sm font-medium">Otimização inteligente com proteção de margens de impressão.</p>
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-        {/* LEFT COLUMN: INPUTS */}
+        {/* INPUTS */}
         <div className="lg:col-span-5 h-full min-h-0 flex flex-col gap-6 overflow-y-auto pr-2 pb-10 scrollbar-thin">
-            
             <div className="flex flex-col gap-6">
-                {shirtGroups.map((group, index) => (
-                    <div key={group.id} className="bg-white rounded-xl border-2 border-sow-border shadow-sm overflow-hidden group-hover:border-purple-200 transition-colors">
+                {shirtGroups.map((group, idx) => (
+                    <div key={group.id} className="bg-white rounded-xl border-2 border-sow-border shadow-sm group-hover:border-purple-200 transition-colors">
                         <div className="p-4 bg-gray-50 border-b border-sow-border flex flex-col gap-3">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-2 text-sow-black font-bold uppercase tracking-wide text-sm">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2 font-bold uppercase text-sm">
                                     <div className="w-3 h-3 rounded-full" style={{backgroundColor: group.color}}></div>
                                     <Shirt className="w-4 h-4 text-sow-grey" />
-                                    <span>Modelo #{index + 1}</span>
+                                    <span>Modelo #{idx + 1}</span>
                                 </div>
-                                <button onClick={() => removeShirtGroup(group.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <button onClick={() => removeShirtGroup(group.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                             </div>
-                            
                             <div className="grid grid-cols-3 gap-3">
-                                <div className="col-span-2">
-                                    <InputGroup label="Nome da Camiseta" name="gn" value={group.name} onChange={(e) => updateShirtGroup(group.id, 'name', e.target.value)} />
-                                </div>
-                                <div className="col-span-1">
-                                    <InputGroup label="Qtd. Camisetas" name="gq" value={group.quantity} onChange={(e) => updateShirtGroup(group.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" />
-                                </div>
+                                <div className="col-span-2"><InputGroup label="Nome" name="gn" value={group.name} onChange={(e) => updateShirtGroup(group.id, 'name', e.target.value)} /></div>
+                                <div className="col-span-1"><InputGroup label="Qtd" name="gq" value={group.quantity} onChange={(e) => updateShirtGroup(group.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" /></div>
                             </div>
                         </div>
-
-                        <div className="p-4 bg-white">
-                            <h4 className="text-[10px] font-bold text-sow-grey uppercase mb-3 flex items-center justify-between">
-                                Estampas desta peça
-                                <button onClick={() => addPrintToGroup(group.id)} className="text-purple-600 hover:text-purple-800 flex items-center gap-1 text-[10px] bg-purple-50 px-2 py-1 rounded">
-                                    <Plus className="w-3 h-3" /> Add Estampa
-                                </button>
-                            </h4>
-                            <div className="space-y-3">
-                                {group.prints.map((print) => (
-                                    <div key={print.id} className="flex flex-col md:flex-row gap-2 items-end bg-gray-50/50 p-2 rounded border border-gray-100">
-                                        <div className="flex-1 w-full">
-                                            <InputGroup label="Local/Desc." name="pd" value={print.description} onChange={(e) => updatePrint(group.id, print.id, 'description', e.target.value)} />
-                                        </div>
-                                        <div className="w-28 md:w-32">
-                                            <InputGroup label="Larg (cm)" name="pw" value={print.width} onChange={(e) => updatePrint(group.id, print.id, 'width', parseFloat(e.target.value))} type="number" />
-                                        </div>
-                                        <div className="w-28 md:w-32">
-                                            <InputGroup label="Alt (cm)" name="ph" value={print.height} onChange={(e) => updatePrint(group.id, print.id, 'height', parseFloat(e.target.value))} type="number" />
-                                        </div>
-                                        <button onClick={() => removePrintFromGroup(group.id, print.id)} className="text-gray-300 hover:text-red-500 pb-2 pl-1">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="bg-purple-50/50 p-2 text-center border-t border-purple-100 text-[10px] text-purple-800 font-medium">
-                            Total: {group.prints.length * group.quantity} estampas
+                        <div className="p-4 space-y-3">
+                            {group.prints.map((p) => (
+                                <div key={p.id} className="flex flex-col md:flex-row gap-2 items-end bg-gray-50/50 p-2 rounded border border-gray-100">
+                                    <div className="flex-1 w-full"><InputGroup label="Descrição" name="pd" value={p.description} onChange={(e) => updatePrint(group.id, p.id, 'description', e.target.value)} /></div>
+                                    <div className="w-24"><InputGroup label="Larg" name="pw" value={p.width} onChange={(e) => updatePrint(group.id, p.id, 'width', parseFloat(e.target.value))} type="number" /></div>
+                                    <div className="w-24"><InputGroup label="Alt" name="ph" value={p.height} onChange={(e) => updatePrint(group.id, p.id, 'height', parseFloat(e.target.value))} type="number" /></div>
+                                    <button onClick={() => removePrintFromGroup(group.id, p.id)} className="text-gray-300 hover:text-red-500 pb-2"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            ))}
+                            <button onClick={() => addPrintToGroup(group.id)} className="w-full py-2 text-xs font-bold text-purple-600 bg-purple-50 rounded border border-dashed border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-1"><Plus className="w-3 h-3" /> Adicionar Estampa</button>
                         </div>
                     </div>
                 ))}
-                <button onClick={addShirtGroup} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" /> Adicionar Novo Modelo
-                </button>
+                <button onClick={addShirtGroup} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:border-purple-500 hover:text-purple-600 flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> Novo Modelo</button>
             </div>
-
+            
             <div className="bg-white p-6 rounded-xl border-2 border-purple-500 shadow-lg mt-auto">
-                <h3 className="font-helvetica font-bold uppercase tracking-widest text-xs text-sow-grey mb-4">Orçamento Geral</h3>
-                {hasErrors && (
-                    <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span>Atenção: Peças maiores que 56cm ou rolo inválido!</span>
-                    </div>
-                )}
+                {hasErrors && <div className="mb-4 bg-red-100 text-red-700 p-3 rounded text-xs flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> <span>Atenção: Itens excedendo a largura do rolo!</span></div>}
                 <div className="flex justify-between items-end mb-2">
-                    <span className="text-4xl font-helvetica font-bold text-sow-black">{formatCurrency(totalCost)}</span>
+                    <span className="text-4xl font-bold">{formatCurrency(totalCost)}</span>
                     <div className="text-right">
-                        <span className="text-sm font-bold text-purple-600 block">{totalMeters.toFixed(2)} metros</span>
-                        <span className="text-[10px] text-sow-grey">Rolo 58cm (Gap {ITEM_GAP_CM}cm)</span>
+                        <span className="text-sm font-bold text-purple-600 block">{totalMeters.toFixed(2)}m</span>
+                        <span className="text-[10px] text-gray-500">Rolo 58cm (Gap {ITEM_GAP_CM}cm)</span>
                     </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
-                    <div className="flex justify-between items-center text-xs">
-                        <span className="text-sow-grey font-medium">Tabela: {priceTier}</span>
-                        <span className="font-bold text-sow-black">{formatCurrency(appliedPrice)}/m</span>
-                    </div>
+                <div className="mt-2 pt-2 border-t border-dashed border-gray-200 text-xs flex justify-between">
+                    <span>Tabela: {priceTier}</span>
+                    <span className="font-bold">{formatCurrency(appliedPrice)}/m</span>
                 </div>
             </div>
         </div>
 
-        {/* RIGHT COLUMN: ROLL VISUALIZATION */}
+        {/* VISUALIZATION */}
         <div className="lg:col-span-7 h-full flex flex-col min-h-0 bg-gray-100 rounded-xl border border-sow-border overflow-hidden relative">
             <div className="p-3 bg-white border-b border-sow-border flex justify-between items-center shadow-sm z-10">
-                <div className="flex items-center gap-2">
-                    <Box className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs font-bold uppercase text-sow-grey">Visualização do Encaixe</span>
-                </div>
+                <div className="flex items-center gap-2"><Box className="w-4 h-4 text-purple-600" /><span className="text-xs font-bold uppercase text-gray-500">Visualização</span></div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-[10px] text-sow-grey">
-                        <span className="w-2 h-2 bg-red-500 rounded-sm"></span> Área Morta (1cm)
-                    </div>
-                    {/* DOWNLOAD BUTTON */}
-                    <button 
-                        onClick={handleDownloadImage}
-                        disabled={isExporting}
-                        className="flex items-center gap-1 text-[10px] font-bold bg-sow-black text-white px-3 py-1.5 rounded hover:bg-sow-green transition-all disabled:opacity-50"
-                    >
-                        {isExporting ? '...' : <><Download className="w-3 h-3" /> Baixar PNG</>}
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500"><span className="w-2 h-2 bg-red-500 rounded-sm"></span> Área Morta ({VISUAL_MARGIN_CM}cm)</div>
+                    <button onClick={handleDownloadImage} disabled={isExporting} className="flex items-center gap-1 text-[10px] font-bold bg-sow-black text-white px-3 py-1.5 rounded hover:bg-sow-green disabled:opacity-50">
+                        {isExporting ? '...' : <><Download className="w-3 h-3" /> PNG</>}
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 flex justify-center" ref={containerRef}>
-                <div 
-                    id="print-area" 
-                    className="bg-white shadow-2xl relative transition-all duration-300 border-x-8 border-gray-300"
+            <div className="flex-1 overflow-y-auto p-4 flex justify-center bg-gray-200/50" ref={containerRef}>
+                <div id="print-area" className="bg-white shadow-2xl relative transition-all duration-300"
                     style={{
-                        width: `${ROLL_WIDTH_CM * scale}px`, 
-                        height: `${Math.max(totalMeters * 100 * scale, 500)}px`, 
-                        backgroundImage: 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0), linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0)',
-                        backgroundSize: '20px 20px',
-                        backgroundPosition: '0 0, 10px 10px'
+                        width: `${ROLL_WIDTH_CM * scale}px`,
+                        height: `${Math.max(totalMeters * 100 * scale, 500)}px`,
+                        backgroundImage: 'linear-gradient(45deg, #f8f8f8 25%, transparent 25%, transparent 75%, #f8f8f8 75%, #f8f8f8), linear-gradient(45deg, #f8f8f8 25%, transparent 25%, transparent 75%, #f8f8f8 75%, #f8f8f8)',
+                        backgroundSize: '20px 20px', backgroundPosition: '0 0, 10px 10px'
                     }}
                 >
-                    {/* METER LINES */}
+                    {/* ZONAS MORTAS (VISUAL) - Z-INDEX ALTO PARA PROVAR QUE NÃO HÁ INVASÃO */}
+                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/20 border-r border-red-500/50 z-50 pointer-events-none" style={{width: `${VISUAL_MARGIN_CM * scale}px`}}></div>
+                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/20 border-l border-red-500/50 z-50 pointer-events-none" style={{width: `${VISUAL_MARGIN_CM * scale}px`}}></div>
+
+                    {/* Linhas de Metro */}
                     {[...Array(Math.ceil(totalMeters))].map((_, i) => (
-                        <div key={i} className="absolute left-0 w-full border-b border-red-300 border-dashed text-red-400 text-[10px] pl-1 font-bold z-0" style={{top: `${(i+1) * 100 * scale}px`}}>{i+1}m</div>
+                        <div key={i} className="absolute left-0 w-full border-b border-red-300 border-dashed text-red-400 text-[10px] pl-2 font-bold z-0" style={{top: `${(i+1) * 100 * scale}px`}}>{i+1}m</div>
+                    ))}
+
+                    {/* ITENS */}
+                    {layout.map((r, idx) => !r.error && (
+                        <div key={idx} className="absolute flex flex-col items-center justify-center text-[9px] font-bold text-black/70 border border-black/10 shadow-sm z-10 hover:z-20 hover:scale-105 transition-transform cursor-pointer"
+                            title={`${r.groupName} - ${r.description}`}
+                            style={{
+                                left: `${r.x * scale}px`, top: `${r.y * scale}px`,
+                                width: `${r.width * scale}px`, height: `${r.height * scale}px`,
+                                backgroundColor: r.color, borderRadius: '2px'
+                            }}
+                        >
+                            {r.rotated && <RefreshCw className="w-3 h-3 text-black/40 absolute top-1 right-1" />}
+                            {r.width * scale > 30 && r.height * scale > 15 && <span className="truncate px-1 max-w-full">{r.width}x{r.height}</span>}
+                        </div>
                     ))}
                     
-                    {/* PLACED ITEMS */}
-                    {layout.map((rect, idx) => {
-                        if (rect.error) return null;
-                        return (
-                            <div
-                                key={idx}
-                                className="absolute flex flex-col items-center justify-center text-[10px] font-bold text-sow-black/70 overflow-hidden hover:opacity-90 hover:scale-[1.02] transition-all cursor-pointer border border-black/20 shadow-sm z-10 box-border"
-                                title={`${rect.groupName} - ${rect.description}: ${rect.width}x${rect.height}`}
-                                style={{
-                                    left: `${rect.x * scale}px`,
-                                    top: `${rect.y * scale}px`,
-                                    width: `${rect.width * scale}px`,
-                                    height: `${rect.height * scale}px`,
-                                    backgroundColor: rect.color,
-                                    borderRadius: '3px'
-                                }}
-                            >
-                                {rect.rotated && <RefreshCw className="w-3 h-3 text-black/40 absolute top-1 right-1" />}
-                                {rect.width * scale > 30 && rect.height * scale > 15 && (
-                                    <span className="truncate px-1 max-w-full text-[9px]">{rect.width}x{rect.height}</span>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {/* DEAD ZONES (Z-INDEX 50 to cover items visually if they glitch) */}
-                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/20 border-r border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
-                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/20 border-l border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
-
-                    {/* SIDE RULER */}
-                    <div className="absolute -right-8 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2" >
-                        <div className="sticky top-2 flex flex-col gap-1">
-                            <span className="font-bold text-purple-600">{totalMeters.toFixed(2)}m</span>
-                            <span className="h-4 w-px bg-purple-200 mx-auto"></span>
-                        </div>
-                    </div>
+                    {/* Régua */}
+                    <div className="absolute -right-6 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2"><span className="sticky top-2 text-purple-600 font-bold">{totalMeters.toFixed(2)}m</span></div>
                 </div>
             </div>
             
-            <div className="absolute bottom-4 right-4 bg-black/80 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none shadow-lg z-30">
-                Zoom: 1cm = {scale.toFixed(1)}px
-            </div>
+            <div className="absolute bottom-4 right-4 bg-black/80 text-white text-[10px] px-3 py-1 rounded-full shadow-lg z-50">1cm = {scale.toFixed(1)}px</div>
         </div>
       </div>
     </div>
