@@ -38,8 +38,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
   const [items, setItems] = useState<PrintItem[]>([
-    { id: '1', width: 28, height: 35, quantity: 1, description: 'Estampa Grande', color: COLORS[0] },
-    { id: '2', width: 10, height: 10, quantity: 4, description: 'Logo Pequeno', color: COLORS[1] }
+    { id: '1', width: 28, height: 35, quantity: 20, description: 'Estampa Grande', color: COLORS[0] },
+    { id: '2', width: 10, height: 10, quantity: 100, description: 'Logo Pequeno', color: COLORS[1] }
   ]);
   
   const [layout, setLayout] = useState<PlacedItem[]>([]);
@@ -89,7 +89,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     setItems(items.map(i => (i.id === id ? { ...i, [field]: value } : i)));
   };
 
-  // --- ALGORITMO "TETRIS" (Bottom-Left Greedy com Rotação) ---
+  // --- ALGORITMO "SMART TETRIS" V3 (Best Fit com Rotação Forçada) ---
   useEffect(() => {
     // 1. Explodir itens pela quantidade
     let itemsToPlace: { w: number, h: number, desc: string, color: string }[] = [];
@@ -99,17 +99,15 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         }
     });
 
-    // 2. Ordenar: Maior primeiro
+    // 2. Ordenar: Maior dimensão (max(w,h)) primeiro. Isso ajuda a colocar as peças grandes antes.
     itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
     let placedRects: PlacedItem[] = [];
 
     // Função para checar colisão
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // Limite da direita
-        if (x + w > MAX_X) return true; 
+        if (x + w > MAX_X) return true; // Passou da largura útil
 
-        // Colisão com outros itens
         for (let r of placedRects) {
             const rRight = r.x + r.width;
             const rBottom = r.y + r.height;
@@ -128,76 +126,61 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
-    // 3. Loop de Posicionamento
-    itemsToPlace.forEach(item => {
-        let bestPos: { x: number, y: number, rotated: boolean } | null = null;
-        let minY = Infinity;
-        let minX = Infinity;
+    // Função para encontrar a melhor posição para uma dimensão específica (w, h)
+    const findBestPosition = (w: number, h: number) => {
+        let bestX = -1;
+        let bestY = Infinity;
 
-        // Gerar pontos candidatos
-        // Ponto inicial absoluto: (Margem, 0)
-        let candidates: Point[] = [{ x: MIN_X, y: 0 }]; 
-        
+        // Gera candidatos baseados nos itens existentes
+        let candidates: Point[] = [{ x: MIN_X, y: 0 }];
         placedRects.forEach(r => {
-            // Candidato à direita de um item: X = (X do item + Largura do item + GAP)
-            if (r.x + r.width + ITEM_GAP_CM + item.w <= MAX_X) {
+            if (r.x + r.width + ITEM_GAP_CM + w <= MAX_X) {
                 candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
             }
-            
-            // Candidato abaixo de um item: Mantém o X do item, Y = (Y do item + Altura do item + GAP)
             candidates.push({ x: r.x, y: r.y + r.height + ITEM_GAP_CM });
-            
-            // Candidato "Reset de Linha": Encostado na margem esquerda (MIN_X), na altura abaixo de um item existente
-            // CORREÇÃO: Aqui usamos MIN_X direto, sem somar GAP, pois a margem já é a segurança.
             candidates.push({ x: MIN_X, y: r.y + r.height + ITEM_GAP_CM });
         });
 
-        // Ordenar candidatos
+        // Ordena candidatos: Menor Y ganha, empate desempata por Menor X
         candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
 
-        // Testar posicionamento
         for (let p of candidates) {
-            if (bestPos && p.y > bestPos.y) break;
-
-            // Teste 1: Orientação Normal
-            if (!checkOverlap(p.x, p.y, item.w, item.h)) {
-                if (p.y < minY || (p.y === minY && p.x < minX)) {
-                    minY = p.y;
-                    minX = p.x;
-                    bestPos = { x: p.x, y: p.y, rotated: false };
-                }
+            if (!checkOverlap(p.x, p.y, w, h)) {
+                return { x: p.x, y: p.y }; // Retorna a primeira válida (que já é a melhor devido à ordenação)
             }
-
-            // Teste 2: Rotacionado
-            if (item.w !== item.h) {
-                if (!checkOverlap(p.x, p.y, item.h, item.w)) {
-                    if (p.y < minY || (p.y === minY && p.x < minX)) {
-                        minY = p.y;
-                        minX = p.x;
-                        bestPos = { x: p.x, y: p.y, rotated: true };
-                    }
-                }
-            }
-            
-            if (bestPos && bestPos.y === 0) break; 
         }
+        
+        // Se não achou (fallback), coloca no final
+        const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
+        return { x: MIN_X, y: lastY };
+    };
 
-        // Fallback: Se não achou (põe no final, encostado na esquerda)
-        if (!bestPos) {
-            const lastY = placedRects.length > 0 
-                ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM 
-                : 0;
-            bestPos = { x: MIN_X, y: lastY, rotated: false };
+    // 3. Loop de Posicionamento
+    itemsToPlace.forEach(item => {
+        // Tenta posição Normal
+        const posNormal = findBestPosition(item.w, item.h);
+        
+        // Tenta posição Rotacionada
+        const posRotated = findBestPosition(item.h, item.w);
+
+        let finalPos: { x: number, y: number, w: number, h: number, rotated: boolean };
+
+        // COMPARAÇÃO DE OURO: Qual ficou mais em cima (menor Y)?
+        // Se a rotação permite ficar mais alto (ou na mesma altura mas mais a esquerda), rotaciona.
+        if (posRotated.y < posNormal.y || (posRotated.y === posNormal.y && posRotated.x < posNormal.x)) {
+             finalPos = { x: posRotated.x, y: posRotated.y, w: item.h, h: item.w, rotated: true };
+        } else {
+             finalPos = { x: posNormal.x, y: posNormal.y, w: item.w, h: item.h, rotated: false };
         }
 
         placedRects.push({
-            x: bestPos.x,
-            y: bestPos.y,
-            width: bestPos.rotated ? item.h : item.w,
-            height: bestPos.rotated ? item.w : item.h,
+            x: finalPos.x,
+            y: finalPos.y,
+            width: finalPos.w,
+            height: finalPos.h,
             description: item.desc,
             color: item.color,
-            rotated: bestPos.rotated
+            rotated: finalPos.rotated
         });
     });
 
