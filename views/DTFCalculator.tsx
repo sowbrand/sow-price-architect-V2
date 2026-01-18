@@ -87,7 +87,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     // Margem de segurança de 10cm no final
     const safeMeters = Math.ceil((finalHeightMeters + 0.1) * 100) / 100;
 
-    // 4. LÓGICA DE PREÇO POR ESCALA (ATUALIZADA)
+    // 4. LÓGICA DE PREÇO POR ESCALA
     let currentPrice = 60; // Base: 1 a 10m
     let currentTier = 'Tabela Padrão (até 10m)';
 
@@ -131,21 +131,25 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             
             <div className="p-4 space-y-3 flex-1 overflow-y-auto">
               {items.map((item, index) => (
-                <div key={item.id} className="grid grid-cols-12 gap-3 items-end bg-white p-3 rounded-lg border border-sow-border shadow-sm group">
-                  <div className="col-span-4">
+                // CORREÇÃO: Mudança de Grid para Flexbox para garantir espaço
+                <div key={item.id} className="flex flex-col md:flex-row gap-3 items-end bg-white p-3 rounded-lg border border-sow-border shadow-sm group">
+                  <div className="flex-1 w-full">
                     <InputGroup label="Descrição" name="desc" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} type="text" />
                   </div>
-                  <div className="col-span-2">
+                  
+                  {/* Campos com largura fixa suficiente (w-24 = 96px) para caber os botões e o número */}
+                  <div className="w-full md:w-28">
                     <InputGroup label="Larg (cm)" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" />
                   </div>
-                  <div className="col-span-2">
+                  <div className="w-full md:w-28">
                     <InputGroup label="Alt (cm)" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" />
                   </div>
-                  <div className="col-span-2">
+                  <div className="w-full md:w-28">
                     <InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" />
                   </div>
-                  <div className="col-span-2 flex justify-end pb-2">
-                    <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-2">
+                  
+                  <div className="pb-2">
+                    <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-2" title="Remover Estampa">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
