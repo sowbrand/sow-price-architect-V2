@@ -40,7 +40,8 @@ interface Point {
   y: number;
 }
 
-// Função auxiliar para evitar erros de ponto flutuante (ex: 57.0000001)
+// Função auxiliar para arredondamento preciso (2 casas decimais)
+// Evita erros como 57.00000001 > 57
 const round = (num: number) => Math.round(num * 100) / 100;
 
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
@@ -76,13 +77,14 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [appliedPrice, setAppliedPrice] = useState(60);
   const [priceTier, setPriceTier] = useState('');
   
-  // CONSTANTES FÍSICAS DE IMPRESSÃO
+  // --- CONFIGURAÇÕES FÍSICAS (HARD LIMITS) ---
   const ROLL_WIDTH_CM = 58; 
   const PAPER_MARGIN_CM = 1; 
   const ITEM_GAP_CM = 1.0; 
-  const USABLE_WIDTH = ROLL_WIDTH_CM - (PAPER_MARGIN_CM * 2);
-  const MIN_X = PAPER_MARGIN_CM; // Início absoluto da área útil (1cm)
-  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; // Fim absoluto da área útil (57cm)
+  
+  // LIMITES ABSOLUTOS: Tudo deve estar entre 1.00 e 57.00
+  const MIN_X = PAPER_MARGIN_CM; 
+  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM;
 
   // Escala visual
   const [scale, setScale] = useState(4); 
@@ -96,7 +98,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }
   }, []);
 
-  // --- FUNÇÕES DE GERENCIAMENTO ---
+  // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
     const newGroup: ShirtGroup = {
@@ -144,9 +146,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }));
   };
 
-  // --- ALGORITMO "SMART TETRIS" V4 (Calculadora Precisa) ---
+  // --- CÉREBRO: Otimizador de Layout (Bin Packing) ---
   useEffect(() => {
-    // 1. Prepara lista plana
+    // 1. Lista Plana
     let itemsToPlace: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
     
     shirtGroups.forEach(group => {
@@ -163,23 +165,25 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         });
     });
 
-    // 2. Ordena (Maior dimensão primeiro)
+    // 2. Ordenação Estratégica (Maior lado primeiro -> Mais difícil de encaixar primeiro)
     itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
     let placedRects: PlacedItem[] = [];
 
-    // Função de Colisão com Arredondamento
+    // Função de Colisão RIGOROSA
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // Verifica limite direito com precisão
+        // [TRAVA DE SEGURANÇA 1] Limite Direito Absoluto
+        // Se a posição final (x+w) for maior que 57.00, PROIBIDO.
         if (round(x + w) > MAX_X) return true; 
 
+        // [TRAVA DE SEGURANÇA 2] Sobreposição com outros itens
         for (let r of placedRects) {
             const rRight = r.x + r.width;
             const rBottom = r.y + r.height;
             const myRight = x + w;
             const myBottom = y + h;
 
-            // Verifica colisão com Gap
+            // Colisão com GAPS
             if (
                 round(x) < round(rRight + ITEM_GAP_CM) &&
                 round(myRight + ITEM_GAP_CM) > round(r.x) &&
@@ -192,35 +196,59 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
-    // Encontra melhor posição
+    // Buscador de Posição
     const findBestPosition = (w: number, h: number) => {
+        // Pontos de interesse (Heurística de Cantos)
         let candidates: Point[] = [{ x: MIN_X, y: 0 }];
+        
         placedRects.forEach(r => {
-            if (round(r.x + r.width + ITEM_GAP_CM + w) <= MAX_X) {
-                candidates.push({ x: round(r.x + r.width + ITEM_GAP_CM), y: r.y });
+            // Tenta colar na direita de um item (respeitando MAX_X)
+            const rightX = round(r.x + r.width + ITEM_GAP_CM);
+            if (round(rightX + w) <= MAX_X) {
+                candidates.push({ x: rightX, y: r.y });
             }
-            candidates.push({ x: r.x, y: round(r.y + r.height + ITEM_GAP_CM) });
-            candidates.push({ x: MIN_X, y: round(r.y + r.height + ITEM_GAP_CM) });
+            
+            // Tenta colar embaixo de um item
+            const bottomY = round(r.y + r.height + ITEM_GAP_CM);
+            candidates.push({ x: r.x, y: bottomY });
+            
+            // Tenta início de linha na altura do item (Reset Esquerda)
+            candidates.push({ x: MIN_X, y: bottomY });
         });
 
-        candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
+        // Ordena candidatos: 
+        // 1. Menor Y (Topo)
+        // 2. Menor X (Esquerda)
+        candidates.sort((a, b) => {
+            if (a.y !== b.y) return a.y - b.y;
+            return a.x - b.x;
+        });
 
+        // Retorna o primeiro válido
         for (let p of candidates) {
             if (!checkOverlap(p.x, p.y, w, h)) return { x: p.x, y: p.y };
         }
         
+        // Fallback: Nova linha no final
         const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
         return { x: MIN_X, y: round(lastY) };
     };
 
-    // 3. Executa Posicionamento
+    // 3. Execução
     itemsToPlace.forEach(item => {
+        // Testa Normal
         const posNormal = findBestPosition(item.w, item.h);
+        // Testa Rotacionado
         const posRotated = findBestPosition(item.h, item.w);
 
+        // Decide Melhor Posição
+        // Critério: Menor Y (Topo) vence. Se empatar, Menor X (Esquerda) vence.
         let finalPos;
-        // Lógica de escolha: Menor Y vence. Se empate, Menor X.
-        if (posRotated.y < posNormal.y || (posRotated.y === posNormal.y && posRotated.x < posNormal.x)) {
+        
+        const normalScore = posNormal.y * 1000 + posNormal.x;
+        const rotatedScore = posRotated.y * 1000 + posRotated.x;
+
+        if (rotatedScore < normalScore) {
              finalPos = { x: posRotated.x, y: posRotated.y, w: item.h, h: item.w, rotated: true };
         } else {
              finalPos = { x: posNormal.x, y: posNormal.y, w: item.w, h: item.h, rotated: false };
@@ -243,7 +271,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     const finalMeters = maxY / 100;
     const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
 
-    // 5. Preço
+    // 5. Preços
     let currentPrice = 60; 
     let currentTier = 'Tabela Base (até 10m)';
 
@@ -384,12 +412,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                         backgroundPosition: '0 0, 10px 10px'
                     }}
                 >
-                    {/* LINHAS DE METRO (Abaixo de tudo) */}
+                    {/* LINHAS DE METRO */}
                     {[...Array(Math.ceil(totalMeters))].map((_, i) => (
                         <div key={i} className="absolute left-0 w-full border-b border-red-300 border-dashed text-red-400 text-[10px] pl-1 font-bold z-0" style={{top: `${(i+1) * 100 * scale}px`}}>{i+1}m</div>
                     ))}
                     
-                    {/* ITENS POSICIONADOS (Meio) */}
+                    {/* ITENS POSICIONADOS */}
                     {layout.map((rect, idx) => (
                         <div
                             key={idx}
@@ -412,9 +440,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                     ))}
 
                     {/* ÁREA MORTA (ACIMA DE TUDO - Z-INDEX 20) */}
-                    {/* Isso garante que qualquer coisa que encoste aqui pareça "cortada" ou "sob a borda" */}
-                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/20 border-r border-red-500/50 z-20 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
-                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/20 border-l border-red-500/50 z-20 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
+                    {/* Alterado para z-50 para garantir visualização sobreposta */}
+                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/20 border-r border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
+                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/20 border-l border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
 
                     {/* Régua Lateral */}
                     <div className="absolute -right-8 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2" >
