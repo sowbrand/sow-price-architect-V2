@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw, Shirt } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import type { SettingsData } from '../types';
@@ -8,16 +8,23 @@ interface DTFCalculatorProps {
   settings: SettingsData;
 }
 
-interface PrintItem {
+// Nova Estrutura Hierárquica
+interface PrintLocation {
   id: string;
-  width: number; // cm
-  height: number; // cm
-  quantity: number;
   description: string;
-  color: string;
+  width: number;
+  height: number;
 }
 
-// Item posicionado no rolo
+interface ShirtGroup {
+  id: string;
+  name: string;
+  quantity: number; // Quantidade de Camisetas
+  color: string; // Cor visual para o gráfico
+  prints: PrintLocation[];
+}
+
+// Item posicionado no rolo (Layout final)
 interface PlacedItem {
   x: number;
   y: number;
@@ -26,20 +33,41 @@ interface PlacedItem {
   description: string;
   color: string;
   rotated: boolean;
+  groupName: string;
 }
 
-// Ponto candidato para encaixe
 interface Point {
   x: number;
   y: number;
 }
 
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
-  const COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
+  // Paleta de cores para diferenciar os Grupos de Camisetas
+  const GROUP_COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
-  const [items, setItems] = useState<PrintItem[]>([
-    { id: '1', width: 28, height: 35, quantity: 20, description: 'Estampa Grande', color: COLORS[0] },
-    { id: '2', width: 10, height: 10, quantity: 100, description: 'Logo Pequeno', color: COLORS[1] }
+  // Estado inicial com o exemplo que você pediu
+  const [shirtGroups, setShirtGroups] = useState<ShirtGroup[]>([
+    {
+      id: '1',
+      name: 'Camiseta Diaconia',
+      quantity: 20,
+      color: GROUP_COLORS[0],
+      prints: [
+        { id: 'p1', description: 'Logo Peito (Esq)', width: 10, height: 10 },
+        { id: 'p2', description: 'Logo Costas', width: 28, height: 10 },
+        { id: 'p3', description: 'Frase "Eis-me"', width: 20, height: 5 }
+      ]
+    },
+    {
+        id: '2',
+        name: 'Camiseta Louvor',
+        quantity: 20,
+        color: GROUP_COLORS[1],
+        prints: [
+          { id: 'p4', description: 'Logo Adoração', width: 25, height: 25 },
+          { id: 'p5', description: 'Nuca', width: 8, height: 8 }
+        ]
+      }
   ]);
   
   const [layout, setLayout] = useState<PlacedItem[]>([]);
@@ -53,8 +81,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const PAPER_MARGIN_CM = 1; 
   const ITEM_GAP_CM = 1.0; 
   const USABLE_WIDTH = ROLL_WIDTH_CM - (PAPER_MARGIN_CM * 2);
-  const MIN_X = PAPER_MARGIN_CM; // Início da área útil (1cm)
-  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; // Fim da área útil (57cm)
+  const MIN_X = PAPER_MARGIN_CM; 
+  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM;
 
   // Escala visual
   const [scale, setScale] = useState(4); 
@@ -68,45 +96,83 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }
   }, []);
 
-  const addItem = () => {
-    const nextColor = COLORS[items.length % COLORS.length];
-    const newItem: PrintItem = {
+  // --- GERENCIAMENTO DE CAMISETAS (GRUPOS) ---
+  const addShirtGroup = () => {
+    const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
+    const newGroup: ShirtGroup = {
       id: Math.random().toString(36).substr(2, 9),
-      width: 10,
-      height: 10,
-      quantity: 1,
-      description: `Arte ${items.length + 1}`,
-      color: nextColor
+      name: `Nova Camiseta ${shirtGroups.length + 1}`,
+      quantity: 10,
+      color: nextColor,
+      prints: [{ id: Math.random().toString(36), description: 'Estampa 1', width: 10, height: 10 }]
     };
-    setItems([...items, newItem]);
+    setShirtGroups([...shirtGroups, newGroup]);
   };
 
-  const removeItem = (id: string) => {
-    setItems(items.filter(i => i.id !== id));
+  const removeShirtGroup = (groupId: string) => {
+    setShirtGroups(shirtGroups.filter(g => g.id !== groupId));
   };
 
-  const updateItem = (id: string, field: keyof PrintItem, value: any) => {
-    setItems(items.map(i => (i.id === id ? { ...i, [field]: value } : i)));
+  const updateShirtGroup = (groupId: string, field: keyof ShirtGroup, value: any) => {
+    setShirtGroups(shirtGroups.map(g => (g.id === groupId ? { ...g, [field]: value } : g)));
   };
 
-  // --- ALGORITMO "SMART TETRIS" V3 (Best Fit com Rotação Forçada) ---
+  // --- GERENCIAMENTO DE ESTAMPAS DENTRO DA CAMISETA ---
+  const addPrintToGroup = (groupId: string) => {
+    setShirtGroups(shirtGroups.map(group => {
+        if (group.id !== groupId) return group;
+        return {
+            ...group,
+            prints: [...group.prints, { id: Math.random().toString(36), description: 'Nova Estampa', width: 10, height: 10 }]
+        };
+    }));
+  };
+
+  const removePrintFromGroup = (groupId: string, printId: string) => {
+    setShirtGroups(shirtGroups.map(group => {
+        if (group.id !== groupId) return group;
+        return { ...group, prints: group.prints.filter(p => p.id !== printId) };
+    }));
+  };
+
+  const updatePrint = (groupId: string, printId: string, field: keyof PrintLocation, value: any) => {
+    setShirtGroups(shirtGroups.map(group => {
+        if (group.id !== groupId) return group;
+        return {
+            ...group,
+            prints: group.prints.map(p => (p.id === printId ? { ...p, [field]: value } : p))
+        };
+    }));
+  };
+
+  // --- ALGORITMO "SMART TETRIS" V3 (Adaptado para Hierarquia) ---
   useEffect(() => {
-    // 1. Explodir itens pela quantidade
-    let itemsToPlace: { w: number, h: number, desc: string, color: string }[] = [];
-    items.forEach(item => {
-        for (let i = 0; i < item.quantity; i++) {
-            itemsToPlace.push({ w: item.width, h: item.height, desc: item.description, color: item.color });
-        }
+    // 1. "Explodir" a hierarquia em uma lista plana de itens para o algoritmo
+    let itemsToPlace: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
+    
+    shirtGroups.forEach(group => {
+        group.prints.forEach(print => {
+            // Adiciona a estampa X vezes (quantidade de camisetas)
+            for (let i = 0; i < group.quantity; i++) {
+                itemsToPlace.push({ 
+                    w: print.width, 
+                    h: print.height, 
+                    desc: print.description, 
+                    color: group.color,
+                    groupName: group.name
+                });
+            }
+        });
     });
 
-    // 2. Ordenar: Maior dimensão (max(w,h)) primeiro. Isso ajuda a colocar as peças grandes antes.
+    // 2. Ordenar: Maior dimensão primeiro
     itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
     let placedRects: PlacedItem[] = [];
 
     // Função para checar colisão
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        if (x + w > MAX_X) return true; // Passou da largura útil
+        if (x + w > MAX_X) return true; 
 
         for (let r of placedRects) {
             const rRight = r.x + r.width;
@@ -126,12 +192,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
-    // Função para encontrar a melhor posição para uma dimensão específica (w, h)
+    // Função Best Fit
     const findBestPosition = (w: number, h: number) => {
-        let bestX = -1;
-        let bestY = Infinity;
-
-        // Gera candidatos baseados nos itens existentes
         let candidates: Point[] = [{ x: MIN_X, y: 0 }];
         placedRects.forEach(r => {
             if (r.x + r.width + ITEM_GAP_CM + w <= MAX_X) {
@@ -141,32 +203,23 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             candidates.push({ x: MIN_X, y: r.y + r.height + ITEM_GAP_CM });
         });
 
-        // Ordena candidatos: Menor Y ganha, empate desempata por Menor X
         candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
 
         for (let p of candidates) {
-            if (!checkOverlap(p.x, p.y, w, h)) {
-                return { x: p.x, y: p.y }; // Retorna a primeira válida (que já é a melhor devido à ordenação)
-            }
+            if (!checkOverlap(p.x, p.y, w, h)) return { x: p.x, y: p.y };
         }
         
-        // Se não achou (fallback), coloca no final
         const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
         return { x: MIN_X, y: lastY };
     };
 
     // 3. Loop de Posicionamento
     itemsToPlace.forEach(item => {
-        // Tenta posição Normal
         const posNormal = findBestPosition(item.w, item.h);
-        
-        // Tenta posição Rotacionada
         const posRotated = findBestPosition(item.h, item.w);
 
-        let finalPos: { x: number, y: number, w: number, h: number, rotated: boolean };
-
-        // COMPARAÇÃO DE OURO: Qual ficou mais em cima (menor Y)?
-        // Se a rotação permite ficar mais alto (ou na mesma altura mas mais a esquerda), rotaciona.
+        let finalPos;
+        // Prefere rotação se economizar Y
         if (posRotated.y < posNormal.y || (posRotated.y === posNormal.y && posRotated.x < posNormal.x)) {
              finalPos = { x: posRotated.x, y: posRotated.y, w: item.h, h: item.w, rotated: true };
         } else {
@@ -180,16 +233,17 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             height: finalPos.h,
             description: item.desc,
             color: item.color,
-            rotated: finalPos.rotated
+            rotated: finalPos.rotated,
+            groupName: item.groupName
         });
     });
 
-    // 4. Calcular métricas finais
+    // 4. Métricas Finais
     const maxY = placedRects.reduce((max, r) => Math.max(max, r.y + r.height), 0);
     const finalMeters = maxY / 100;
     const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
 
-    // 5. Aplicar Tabela
+    // 5. Tabela de Preço
     let currentPrice = 60; 
     let currentTier = 'Tabela Base (até 10m)';
 
@@ -207,59 +261,94 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     setPriceTier(currentTier);
     setTotalCost(safeMeters * currentPrice);
 
-  }, [items]);
+  }, [shirtGroups]); // Recalcula quando qualquer dado da camisa mudar
 
   return (
     <div className="h-full flex flex-col font-montserrat overflow-hidden">
       <div className="mb-6 shrink-0">
         <div className="flex items-center gap-3 text-sow-black mb-1">
           <div className="p-2 bg-purple-100 rounded-lg"><Printer className="w-6 h-6 text-purple-600" /></div>
-          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador de Rolo DTF (Tetris)</h2>
+          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador DTF por Camiseta</h2>
         </div>
         <p className="text-sow-grey text-sm font-medium">
-          Sistema inteligente de encaixe automático com rotação de peças para economia máxima de papel.
+          Adicione modelos de camisetas e suas estampas. O sistema multiplica e encaixa automaticamente.
         </p>
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-        {/* COLUNA ESQUERDA: INPUTS */}
-        <div className="lg:col-span-5 h-full min-h-0 flex flex-col gap-6 overflow-y-auto pr-1">
-            {/* Lista de Itens */}
-            <div className="bg-white p-4 rounded-xl border border-sow-border shadow-soft">
-                <div className="flex justify-between items-center mb-4 border-b border-sow-border pb-2">
-                    <h3 className="font-bold text-sm text-sow-black uppercase">Artes para Impressão</h3>
-                    <button onClick={addItem} className="flex items-center gap-1 text-xs font-bold bg-sow-black text-white px-3 py-1.5 rounded hover:bg-sow-green transition-colors">
-                        <Plus className="w-3 h-3" /> Nova
-                    </button>
-                </div>
-
-                <div className="space-y-3">
-                    {items.map((item) => (
-                        <div key={item.id} className="flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
-                            {/* Linha 1 */}
-                            <div className="flex items-center gap-2 w-full">
-                                <div className="w-3 h-3 rounded-full shrink-0" style={{backgroundColor: item.color}}></div>
-                                <div className="flex-1">
-                                    <InputGroup label="Descrição" name="d" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} />
+        {/* COLUNA ESQUERDA: INPUTS DE CAMISETAS */}
+        <div className="lg:col-span-5 h-full min-h-0 flex flex-col gap-6 overflow-y-auto pr-2 pb-10 scrollbar-thin">
+            
+            {/* Lista de Grupos de Camisetas */}
+            <div className="flex flex-col gap-6">
+                {shirtGroups.map((group, index) => (
+                    <div key={group.id} className="bg-white rounded-xl border-2 border-sow-border shadow-sm overflow-hidden group-hover:border-purple-200 transition-colors">
+                        {/* Cabeçalho da Camiseta */}
+                        <div className="p-4 bg-gray-50 border-b border-sow-border flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2 text-sow-black font-bold uppercase tracking-wide text-sm">
+                                    <div className="w-3 h-3 rounded-full" style={{backgroundColor: group.color}}></div>
+                                    <Shirt className="w-4 h-4 text-sow-grey" />
+                                    <span>Modelo #{index + 1}</span>
                                 </div>
-                                <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 pt-3">
-                                    <Trash2 className="w-5 h-5" />
+                                <button onClick={() => removeShirtGroup(group.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
-                            {/* Linha 2 */}
-                            <div className="grid grid-cols-3 gap-3 w-full">
-                                <InputGroup label="Larg (cm)" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" />
-                                <InputGroup label="Alt (cm)" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" />
-                                <InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" />
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="col-span-2">
+                                    <InputGroup label="Nome da Camiseta" name="gn" value={group.name} onChange={(e) => updateShirtGroup(group.id, 'name', e.target.value)} />
+                                </div>
+                                <div className="col-span-1">
+                                    <InputGroup label="Qtd. Camisetas" name="gq" value={group.quantity} onChange={(e) => updateShirtGroup(group.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" />
+                                </div>
                             </div>
                         </div>
-                    ))}
-                </div>
+
+                        {/* Lista de Estampas da Camiseta */}
+                        <div className="p-4 bg-white">
+                            <h4 className="text-[10px] font-bold text-sow-grey uppercase mb-3 flex items-center justify-between">
+                                Estampas desta peça
+                                <button onClick={() => addPrintToGroup(group.id)} className="text-purple-600 hover:text-purple-800 flex items-center gap-1 text-[10px] bg-purple-50 px-2 py-1 rounded">
+                                    <Plus className="w-3 h-3" /> Add Estampa
+                                </button>
+                            </h4>
+                            
+                            <div className="space-y-3">
+                                {group.prints.map((print) => (
+                                    <div key={print.id} className="flex gap-2 items-end bg-gray-50/50 p-2 rounded border border-gray-100">
+                                        <div className="flex-1">
+                                            <InputGroup label="Local/Desc." name="pd" value={print.description} onChange={(e) => updatePrint(group.id, print.id, 'description', e.target.value)} />
+                                        </div>
+                                        <div className="w-20">
+                                            <InputGroup label="Larg" name="pw" value={print.width} onChange={(e) => updatePrint(group.id, print.id, 'width', parseFloat(e.target.value))} type="number" />
+                                        </div>
+                                        <div className="w-20">
+                                            <InputGroup label="Alt" name="ph" value={print.height} onChange={(e) => updatePrint(group.id, print.id, 'height', parseFloat(e.target.value))} type="number" />
+                                        </div>
+                                        <button onClick={() => removePrintFromGroup(group.id, print.id)} className="text-gray-300 hover:text-red-500 pb-2">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="bg-purple-50/50 p-2 text-center border-t border-purple-100 text-[10px] text-purple-800 font-medium">
+                            Total de estampas neste lote: {group.prints.length * group.quantity} un
+                        </div>
+                    </div>
+                ))}
+
+                <button onClick={addShirtGroup} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all flex items-center justify-center gap-2">
+                    <Plus className="w-5 h-5" /> Adicionar Novo Modelo de Camiseta
+                </button>
             </div>
 
             {/* Resumo Financeiro */}
-            <div className="bg-white p-6 rounded-xl border-2 border-purple-500 shadow-lg">
-                <h3 className="font-helvetica font-bold uppercase tracking-widest text-xs text-sow-grey mb-4">Orçamento Otimizado</h3>
+            <div className="bg-white p-6 rounded-xl border-2 border-purple-500 shadow-lg mt-auto">
+                <h3 className="font-helvetica font-bold uppercase tracking-widest text-xs text-sow-grey mb-4">Orçamento Geral do Lote</h3>
                 
                 <div className="flex justify-between items-end mb-2">
                     <span className="text-4xl font-helvetica font-bold text-sow-black">{formatCurrency(totalCost)}</span>
@@ -292,10 +381,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             <div className="p-3 bg-white border-b border-sow-border flex justify-between items-center shadow-sm z-10">
                 <div className="flex items-center gap-2">
                     <Box className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs font-bold uppercase text-sow-grey">Simulação de Encaixe Automático</span>
+                    <span className="text-xs font-bold uppercase text-sow-grey">Simulação de Impressão (Todos os Modelos)</span>
                 </div>
                 <div className="flex items-center gap-4 text-[10px] font-medium text-sow-grey">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-300 rounded-sm"></span> Área Morta</span>
                     <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3 text-purple-600" /> Peça Rotacionada</span>
                 </div>
             </div>
@@ -326,7 +414,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                         <div
                             key={idx}
                             className="absolute flex flex-col items-center justify-center text-[10px] font-bold text-sow-black/70 overflow-hidden hover:opacity-90 hover:scale-[1.02] transition-all cursor-pointer border border-black/20 shadow-sm z-10"
-                            title={`${rect.description}: ${rect.width}x${rect.height} (Rotacionado: ${rect.rotated ? 'Sim' : 'Não'})`}
+                            title={`${rect.groupName} - ${rect.description}: ${rect.width}x${rect.height}`}
                             style={{
                                 left: `${rect.x * scale}px`,
                                 top: `${rect.y * scale}px`,
@@ -342,8 +430,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                             {/* Texto (Só mostra se couber) */}
                             {rect.width * scale > 30 && rect.height * scale > 15 && (
                                 <>
-                                    <span className="truncate px-1 max-w-full">{rect.width}x{rect.height}</span>
-                                    {rect.height * scale > 30 && <span className="text-[8px] opacity-60 truncate px-1 max-w-full">{rect.description}</span>}
+                                    <span className="truncate px-1 max-w-full text-[9px]">{rect.width}x{rect.height}</span>
+                                    {rect.height * scale > 30 && <span className="text-[7px] opacity-60 truncate px-1 max-w-full leading-tight">{rect.description}</span>}
                                 </>
                             )}
                         </div>
