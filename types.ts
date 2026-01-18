@@ -3,13 +3,9 @@ export enum CalculationMode {
   CALCULATOR = 'CALCULATOR',
   COMPARATOR = 'COMPARATOR',
   REVERSE = 'REVERSE',
-  DTF = 'DTF', // <--- NOVO
+  DTF = 'DTF',
   SETTINGS = 'SETTINGS',
 }
-
-// ... mantenha o resto das interfaces iguais ...
-// (Não precisa apagar o resto, apenas adicione o 'DTF' no enum acima)
-// Se quiser copiar o arquivo todo para garantir, segue abaixo:
 
 export interface SilkPriceTable {
   small: { firstColor: number; extraColor: number; screenNew: number; screenRemake: number };
@@ -48,6 +44,7 @@ export interface Embellishment {
   embroideryStitchCount?: number; 
   embroideryCostPerThousand?: number;
   dtfMetersUsed?: number; 
+  calculatedUnitCost?: number; // Custo unitário vindo do otimizador
 }
 
 export interface ProductInput {
@@ -89,4 +86,15 @@ export interface CalculationResult {
   netProfitUnit: number;
   markup: number;
   warnings: string[];
+}
+
+// --- INTERFACE DE DADOS DO DTF ---
+export interface DTFResultData {
+  totalMeters: number;
+  printCost: number;
+  appCost: number;
+  totalCost: number;
+  totalItems: number;
+  priceTier: string;
+  isOutsourced: boolean;
 }
