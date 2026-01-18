@@ -7,7 +7,7 @@ import type { SettingsData, DTFResultData } from '../types';
 
 interface DTFCalculatorProps {
   settings: SettingsData;
-  onCalculationChange?: (data: DTFResultData) => void; // Adicionado para integração
+  onCalculationChange?: (data: DTFResultData) => void;
 }
 
 // --- ESTRUTURAS DE DADOS ---
@@ -132,22 +132,6 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }
   };
 
-  // --- NOVO: FUNÇÃO PARA APLICAR PREÇO NO ORÇAMENTO ---
-  const handleExportToPricing = () => {
-    if (onCalculationChange) {
-        onCalculationChange({
-            totalMeters,
-            printCost,
-            appCost,
-            totalCost: printCost + appCost,
-            totalItems: totalApplications,
-            priceTier,
-            isOutsourced: appType === 'outsourced'
-        });
-        alert(`Valores aplicados com sucesso!\nTotal adicionado: ${formatCurrency(printCost + appCost)}`);
-    }
-  };
-
   // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
@@ -182,6 +166,22 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     setShirtGroups(shirtGroups.map(g => g.id !== gid ? g : {
         ...g, prints: g.prints.map(p => p.id === pid ? { ...p, [field]: value } : p)
     }));
+  };
+
+  // --- FUNÇÃO PARA APLICAR NO ORÇAMENTO (CORREÇÃO AQUI) ---
+  const handleApplyToBudget = () => {
+    if (onCalculationChange) {
+        onCalculationChange({
+            totalMeters,
+            printCost,
+            appCost,
+            totalCost: printCost + appCost, // Soma impressão + aplicação
+            totalItems: totalApplications,
+            priceTier,
+            isOutsourced: appType === 'outsourced'
+        });
+        alert('Valores de DTF aplicados ao orçamento com sucesso!');
+    }
   };
 
   // --- ALGORITMO OTIMIZADO V5 + CÁLCULO DE SERVIÇO ---
@@ -434,9 +434,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     <span>{priceTier}</span>
                 </div>
 
-                {/* BOTÃO DE ENVIO MANUAL */}
+                {/* BOTÃO DE APLICAR - ADICIONADO AQUI */}
                 <button 
-                    onClick={handleExportToPricing} 
+                    onClick={handleApplyToBudget} 
                     className="w-full mt-3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
                 >
                     <CheckCircle2 className="w-4 h-4" /> Aplicar no Orçamento
