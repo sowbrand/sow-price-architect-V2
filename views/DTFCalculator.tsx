@@ -53,7 +53,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const PAPER_MARGIN_CM = 1; 
   const ITEM_GAP_CM = 1.0; 
   const USABLE_WIDTH = ROLL_WIDTH_CM - (PAPER_MARGIN_CM * 2);
-  const START_Y = 0.5; // Ajuste para começar no topo relativo
+  const MIN_X = PAPER_MARGIN_CM; // Início da área útil (1cm)
+  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; // Fim da área útil (57cm)
 
   // Escala visual
   const [scale, setScale] = useState(4); 
@@ -98,17 +99,17 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         }
     });
 
-    // 2. Ordenar: Tentar encaixar os maiores/mais altos primeiro
+    // 2. Ordenar: Maior primeiro
     itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
     let placedRects: PlacedItem[] = [];
 
-    // Função para checar colisão com itens já colocados
+    // Função para checar colisão
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // Checa limites do papel
-        if (x + w > USABLE_WIDTH + PAPER_MARGIN_CM) return true; 
+        // Limite da direita
+        if (x + w > MAX_X) return true; 
 
-        // Checa sobreposição com outros itens (considerando GAP)
+        // Colisão com outros itens
         for (let r of placedRects) {
             const rRight = r.x + r.width;
             const rBottom = r.y + r.height;
@@ -134,14 +135,24 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         let minX = Infinity;
 
         // Gerar pontos candidatos
-        let candidates: Point[] = [{ x: PAPER_MARGIN_CM, y: 0 }]; // Começa no Y=0 absoluto
+        // Ponto inicial absoluto: (Margem, 0)
+        let candidates: Point[] = [{ x: MIN_X, y: 0 }]; 
         
         placedRects.forEach(r => {
-            candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
+            // Candidato à direita de um item: X = (X do item + Largura do item + GAP)
+            if (r.x + r.width + ITEM_GAP_CM + item.w <= MAX_X) {
+                candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
+            }
+            
+            // Candidato abaixo de um item: Mantém o X do item, Y = (Y do item + Altura do item + GAP)
             candidates.push({ x: r.x, y: r.y + r.height + ITEM_GAP_CM });
-            candidates.push({ x: PAPER_MARGIN_CM, y: r.y + r.height + ITEM_GAP_CM });
+            
+            // Candidato "Reset de Linha": Encostado na margem esquerda (MIN_X), na altura abaixo de um item existente
+            // CORREÇÃO: Aqui usamos MIN_X direto, sem somar GAP, pois a margem já é a segurança.
+            candidates.push({ x: MIN_X, y: r.y + r.height + ITEM_GAP_CM });
         });
 
+        // Ordenar candidatos
         candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
 
         // Testar posicionamento
@@ -171,11 +182,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             if (bestPos && bestPos.y === 0) break; 
         }
 
+        // Fallback: Se não achou (põe no final, encostado na esquerda)
         if (!bestPos) {
             const lastY = placedRects.length > 0 
                 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM 
                 : 0;
-            bestPos = { x: PAPER_MARGIN_CM, y: lastY, rotated: false };
+            bestPos = { x: MIN_X, y: lastY, rotated: false };
         }
 
         placedRects.push({
@@ -240,10 +252,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
 
                 <div className="space-y-3">
                     {items.map((item) => (
-                        // CORREÇÃO: Layout em Grade Vertical para não quebrar
                         <div key={item.id} className="flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
-                            
-                            {/* Linha 1: Cor + Descrição + Botão Excluir */}
+                            {/* Linha 1 */}
                             <div className="flex items-center gap-2 w-full">
                                 <div className="w-3 h-3 rounded-full shrink-0" style={{backgroundColor: item.color}}></div>
                                 <div className="flex-1">
@@ -253,8 +263,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                                     <Trash2 className="w-5 h-5" />
                                 </button>
                             </div>
-
-                            {/* Linha 2: Medidas em Grid de 3 Colunas (Nunca vaza) */}
+                            {/* Linha 2 */}
                             <div className="grid grid-cols-3 gap-3 w-full">
                                 <InputGroup label="Larg (cm)" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" />
                                 <InputGroup label="Alt (cm)" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" />
