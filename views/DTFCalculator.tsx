@@ -317,17 +317,20 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                             
                             <div className="space-y-3">
                                 {group.prints.map((print) => (
-                                    <div key={print.id} className="flex gap-2 items-end bg-gray-50/50 p-2 rounded border border-gray-100">
-                                        <div className="flex-1">
+                                    <div key={print.id} className="flex flex-col md:flex-row gap-2 items-end bg-gray-50/50 p-2 rounded border border-gray-100">
+                                        <div className="flex-1 w-full">
                                             <InputGroup label="Local/Desc." name="pd" value={print.description} onChange={(e) => updatePrint(group.id, print.id, 'description', e.target.value)} />
                                         </div>
-                                        <div className="w-20">
-                                            <InputGroup label="Larg" name="pw" value={print.width} onChange={(e) => updatePrint(group.id, print.id, 'width', parseFloat(e.target.value))} type="number" />
+                                        
+                                        {/* CORREÇÃO: Largura aumentada para 32 (128px) para garantir visibilidade */}
+                                        <div className="w-28 md:w-32">
+                                            <InputGroup label="Larg (cm)" name="pw" value={print.width} onChange={(e) => updatePrint(group.id, print.id, 'width', parseFloat(e.target.value))} type="number" />
                                         </div>
-                                        <div className="w-20">
-                                            <InputGroup label="Alt" name="ph" value={print.height} onChange={(e) => updatePrint(group.id, print.id, 'height', parseFloat(e.target.value))} type="number" />
+                                        <div className="w-28 md:w-32">
+                                            <InputGroup label="Alt (cm)" name="ph" value={print.height} onChange={(e) => updatePrint(group.id, print.id, 'height', parseFloat(e.target.value))} type="number" />
                                         </div>
-                                        <button onClick={() => removePrintFromGroup(group.id, print.id)} className="text-gray-300 hover:text-red-500 pb-2">
+                                        
+                                        <button onClick={() => removePrintFromGroup(group.id, print.id)} className="text-gray-300 hover:text-red-500 pb-2 pl-1">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -384,6 +387,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                     <span className="text-xs font-bold uppercase text-sow-grey">Simulação de Impressão (Todos os Modelos)</span>
                 </div>
                 <div className="flex items-center gap-4 text-[10px] font-medium text-sow-grey">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-300 rounded-sm"></span> Área Morta</span>
                     <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3 text-purple-600" /> Peça Rotacionada</span>
                 </div>
             </div>
