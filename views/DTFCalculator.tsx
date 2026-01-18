@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Plus, Trash2, ArrowRight, Ruler } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import type { SettingsData } from '../types';
@@ -22,6 +22,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   ]);
   const [totalMeters, setTotalMeters] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
+  const [appliedPrice, setAppliedPrice] = useState(60);
+  const [priceTier, setPriceTier] = useState('');
 
   // Constantes de impressão
   const ROLL_WIDTH = 58; // cm
@@ -48,53 +50,61 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     setItems(items.map(i => (i.id === id ? { ...i, [field]: value } : i)));
   };
 
-  // ALGORITMO DE "NESTING" (Empilhamento Simples em Linha)
+  // ALGORITMO DE "NESTING" E PRECIFICAÇÃO ESCALONADA
   useEffect(() => {
     let currentX = 0;
     let currentY = 0;
     let rowHeight = 0;
     
-    // Vamos explodir a lista: se tenho 20 unidades da estampa A, crio 20 objetos para alocar
+    // 1. Prepara a lista explodida de itens
     const allPrints: { w: number, h: number }[] = [];
-    
     items.forEach(item => {
-      // Adiciona o espaçamento no tamanho da peça para cálculo
       const effectiveW = item.width + ITEM_GAP;
       const effectiveH = item.height + ITEM_GAP;
-      
       for (let i = 0; i < item.quantity; i++) {
         allPrints.push({ w: effectiveW, h: effectiveH });
       }
     });
 
-    // Ordenar por altura ajuda a otimizar (opcional, mas recomendado)
+    // Ordena por altura para otimizar encaixe
     allPrints.sort((a, b) => b.h - a.h);
 
+    // 2. Calcula posição no papel
     allPrints.forEach(print => {
-      // Cabe na linha atual?
       if (currentX + print.w <= USABLE_WIDTH) {
-        // Sim, adiciona na linha
         currentX += print.w;
         rowHeight = Math.max(rowHeight, print.h);
       } else {
-        // Não, pula para próxima linha
         currentY += rowHeight;
-        currentX = print.w; // Começa nova linha com este item
+        currentX = print.w;
         rowHeight = print.h;
       }
     });
 
-    // Soma a altura da última linha
+    // 3. Define metragem final
     const finalHeightCm = currentY + rowHeight;
     const finalHeightMeters = finalHeightCm / 100;
-
-    // Arredonda para cima com uma pequena margem de segurança (10cm) para corte/início
+    // Margem de segurança de 10cm no final
     const safeMeters = Math.ceil((finalHeightMeters + 0.1) * 100) / 100;
 
-    setTotalMeters(safeMeters);
-    setTotalCost(safeMeters * settings.serviceCosts.dtfPrintMeter);
+    // 4. LÓGICA DE PREÇO POR ESCALA (ATUALIZADA)
+    let currentPrice = 60; // Base: 1 a 10m
+    let currentTier = 'Tabela Padrão (até 10m)';
 
-  }, [items, settings.serviceCosts.dtfPrintMeter]);
+    if (safeMeters > 20) {
+        currentPrice = 45;
+        currentTier = 'Tabela Atacado Super (> 20m)';
+    } else if (safeMeters > 10) {
+        currentPrice = 50;
+        currentTier = 'Tabela Atacado (> 10m)';
+    }
+
+    setTotalMeters(safeMeters);
+    setAppliedPrice(currentPrice);
+    setPriceTier(currentTier);
+    setTotalCost(safeMeters * currentPrice);
+
+  }, [items]);
 
   return (
     <div className="h-full flex flex-col font-montserrat overflow-hidden">
@@ -104,7 +114,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
           <h2 className="text-2xl font-helvetica font-bold tracking-tight">Calculadora de Rolo DTF</h2>
         </div>
         <p className="text-sow-grey text-sm font-medium">
-          Otimize o encaixe de estampas no rolo de {ROLL_WIDTH}cm e calcule o custo exato de impressão.
+          Otimize o encaixe de estampas e calcule custos com tabela progressiva.
         </p>
       </div>
 
@@ -143,8 +153,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
               ))}
             </div>
             
-            <div className="p-4 bg-purple-50 border-t border-purple-100 text-xs text-purple-800 font-medium">
-              <p>ℹ️ Considerado: Rolo {ROLL_WIDTH}cm | Margem Papel {PAPER_MARGIN}cm | Espaço entre artes {ITEM_GAP}cm</p>
+            <div className="p-4 bg-purple-50 border-t border-purple-100 text-xs text-purple-800 font-medium flex justify-between items-center">
+              <p>ℹ️ Rolo {ROLL_WIDTH}cm | Margem {PAPER_MARGIN}cm | Gap {ITEM_GAP}cm</p>
+              <p className="font-bold">Regra: 1-10m (R$60) | 10-20m (R$50) | 20m+ (R$45)</p>
             </div>
           </div>
         </div>
@@ -153,7 +164,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         <div className="lg:col-span-5 h-full flex flex-col gap-6 min-h-0">
           
           {/* Card Principal */}
-          <div className="bg-white rounded-xl border-2 border-purple-500 shadow-lg p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+          <div className="bg-white rounded-xl border-2 border-purple-500 shadow-lg p-8 flex flex-col items-center justify-center text-center relative overflow-hidden transition-all duration-500">
              <div className="absolute top-0 right-0 p-6 opacity-5"><Ruler className="w-40 h-40 text-purple-600" /></div>
              
              <h3 className="font-helvetica font-bold uppercase tracking-widest text-sm text-sow-grey mb-2 relative z-10">
@@ -165,12 +176,18 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
              
              <div className="mt-8 pt-6 border-t border-gray-100 w-full relative z-10">
                 <div className="flex justify-between items-center mb-2">
-                   <span className="text-sm font-bold text-sow-grey">Custo do Metro (Config)</span>
-                   <span className="font-mono text-sow-black">{formatCurrency(settings.serviceCosts.dtfPrintMeter)}</span>
+                   <div className="text-left">
+                       <span className="text-xs font-bold text-sow-grey block">Preço Aplicado</span>
+                       <span className="text-[10px] text-sow-green font-bold uppercase tracking-wide bg-sow-green/10 px-1 rounded">{priceTier}</span>
+                   </div>
+                   <div className="text-right">
+                       <span className="font-mono text-xl font-bold text-sow-black block">{formatCurrency(appliedPrice)}<span className="text-xs text-gray-400">/m</span></span>
+                       {appliedPrice < 60 && <span className="text-[10px] text-sow-green flex items-center justify-end gap-1"><TrendingDown className="w-3 h-3"/> Economia de {formatCurrency(60 - appliedPrice)}/m</span>}
+                   </div>
                 </div>
-                <div className="flex justify-between items-center text-xl font-bold text-sow-black bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center text-xl font-bold text-sow-black bg-purple-50 p-4 rounded-lg border border-purple-100 mt-4">
                    <span>Custo Total do Lote</span>
-                   <span className="text-purple-600">{formatCurrency(totalCost)}</span>
+                   <span className="text-purple-600 text-2xl">{formatCurrency(totalCost)}</span>
                 </div>
              </div>
           </div>
@@ -178,20 +195,20 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
           {/* Dica de Aplicação */}
           <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1">
              <h4 className="font-bold text-sow-black mb-4 flex items-center gap-2">
-                <ArrowRight className="w-4 h-4 text-sow-green" /> Como usar este valor?
+                <ArrowRight className="w-4 h-4 text-sow-green" /> Próximos Passos
              </h4>
-             <ul className="space-y-3 text-sm text-sow-grey">
-                <li className="flex gap-2">
-                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs">1</span>
-                   <span>Pegue o <strong>Custo Total do Lote ({formatCurrency(totalCost)})</strong>.</span>
+             <ul className="space-y-4 text-sm text-sow-grey font-medium">
+                <li className="flex gap-3 items-start">
+                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5">1</span>
+                   <span>Copie o <strong>Custo Total ({formatCurrency(totalCost)})</strong>.</span>
                 </li>
-                <li className="flex gap-2">
-                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs">2</span>
-                   <span>Vá para a aba <strong>Precificação</strong>.</span>
+                <li className="flex gap-3 items-start">
+                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5">2</span>
+                   <span>Vá para <strong>Precificação</strong>.</span>
                 </li>
-                <li className="flex gap-2">
-                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs">3</span>
-                   <span>No item "DTF", insira esse valor dividido pela quantidade de peças, ou use o campo de "Logística/Outros" se preferir lançar o lote todo.</span>
+                <li className="flex gap-3 items-start">
+                   <span className="font-bold text-sow-black bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5">3</span>
+                   <span>No campo de <strong>Logística/Outros</strong>, insira este valor total. O sistema dividirá automaticamente pela quantidade de peças do lote ({items.reduce((acc, i) => acc + i.quantity, 0)} pçs estimadas).</span>
                 </li>
              </ul>
           </div>
