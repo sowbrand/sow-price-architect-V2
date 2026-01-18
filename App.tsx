@@ -4,52 +4,87 @@ import { Dashboard } from './views/Dashboard';
 import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
-import { SettingsView } from './views/Settings';
-import { DTFCalculator } from './views/DTFCalculator'; // Importação Nova
-import { CalculationMode } from './types';
-import type { SettingsData } from './types';
-import { INITIAL_SETTINGS } from './constants/defaults';
+import { Settings } from './views/Settings';
+import { CalculationMode, SettingsData } from './types';
 
-export const App: React.FC = () => {
-    const [mode, setMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
-    const [settings, setSettings] = useState<SettingsData>(INITIAL_SETTINGS);
-
-    const renderContent = () => {
-        switch (mode) {
-            case CalculationMode.CALCULATOR: return <PricingCalculator settings={settings} />;
-            case CalculationMode.COMPARATOR: return <Comparator settings={settings} />;
-            case CalculationMode.DTF: return <DTFCalculator settings={settings} />; // Rota Nova
-            case CalculationMode.REVERSE: return <ReverseEngineering settings={settings} />;
-            case CalculationMode.SETTINGS: return <SettingsView settings={settings} updateSettings={setSettings} />;
-            case CalculationMode.DASHBOARD:
-            default: return <Dashboard setMode={setMode} />;
-        }
-    };
-
-    const isDashboard = mode === CalculationMode.DASHBOARD;
-
-    return (
-        <div className="flex h-screen bg-sow-white font-montserrat overflow-hidden text-sow-grey">
-            {/* A Sidebar só aparece se NÃO for o Dashboard */}
-            {!isDashboard && <Sidebar currentMode={mode} setMode={setMode} />}
-            
-            <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-sow-white">
-                {/* Header Mobile - Escondido no dashboard desktop, visível em telas pequenas */}
-                {!isDashboard && (
-                    <div className="lg:hidden h-16 border-b border-sow-border flex items-center justify-center bg-sow-white shrink-0 z-20">
-                         <h1 className="text-xl tracking-tighter leading-none select-none">
-                            <span className="font-helvetica font-light text-sow-black">sow</span>
-                            <span className="font-helvetica font-bold text-sow-black">brand</span>
-                        </h1>
-                    </div>
-                )}
-
-                <div className="flex-1 p-4 lg:p-8 overflow-hidden relative">
-                    <div className="h-full w-full max-w-[1600px] mx-auto animate-fade-in">
-                        {renderContent()}
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
+// Configurações Padrão Iniciais (Caso não tenha vindo do banco)
+const DEFAULT_SETTINGS: SettingsData = {
+  monthlyFixedCosts: 15000,
+  estimatedMonthlyProduction: 1000,
+  taxRegime: 'SIMPLES',
+  defaultTaxRate: 4,
+  defaultCardRate: 3.5,
+  defaultMarketingRate: 5,
+  defaultCommissionRate: 0,
+  silkPrices: {
+    small: { firstColor: 4.50, extraColor: 1.50, screenNew: 35, screenRemake: 25 },
+    large: { firstColor: 6.50, extraColor: 2.50, screenNew: 55, screenRemake: 40 }
+  },
+  serviceCosts: {
+    cuttingManual: 1.50,
+    cuttingPlotter: 0.80,
+    plotterPaper: 4.50,
+    sewingStandard: 5.00,
+    dtfPrintMeter: 60.00,
+    dtfApplication: 4.00 // Padrão manual
+  }
 };
+
+function App() {
+  // Estado da Navegação
+  const [currentMode, setCurrentMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
+  
+  // Estado das Configurações (Compartilhado entre todas as abas)
+  const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-montserrat">
+      {/* SIDEBAR (Navegação) */}
+      <Sidebar currentMode={currentMode} onNavigate={setCurrentMode} />
+
+      {/* ÁREA DE CONTEÚDO PRINCIPAL */}
+      <main className="flex-1 overflow-hidden relative">
+        
+        {/* ESTRATÉGIA DE PERSISTÊNCIA:
+           Renderizamos TODOS os componentes, mas usamos a classe 'hidden' 
+           nos que não estão ativos. Isso mantém os dados vivos na memória
+           enquanto você troca de aba.
+        */}
+
+        {/* 1. DASHBOARD */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.DASHBOARD ? 'block' : 'hidden'}`}>
+          <Dashboard settings={settings} />
+        </div>
+
+        {/* 2. PRECIFICAÇÃO (Sua calculadora principal + DTF) */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.CALCULATOR ? 'block' : 'hidden'}`}>
+          <PricingCalculator settings={settings} />
+        </div>
+
+        {/* 3. COMPARADOR DE ESTRATÉGIAS */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.COMPARATOR ? 'block' : 'hidden'}`}>
+          <Comparator settings={settings} />
+        </div>
+
+        {/* 4. ENGENHARIA REVERSA */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.REVERSE ? 'block' : 'hidden'}`}>
+          <ReverseEngineering settings={settings} />
+        </div>
+
+        {/* 5. CONFIGURAÇÕES (Settings) */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.SETTINGS ? 'block' : 'hidden'}`}>
+          <Settings 
+            data={settings} 
+            onSave={(newSettings) => {
+              setSettings(newSettings);
+              alert('Configurações salvas e aplicadas em todas as abas!');
+            }} 
+          />
+        </div>
+
+      </main>
+    </div>
+  );
+}
+
+export default App;
