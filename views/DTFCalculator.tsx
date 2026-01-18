@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, Info } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import type { SettingsData } from '../types';
@@ -14,10 +14,10 @@ interface PrintItem {
   height: number; // cm
   quantity: number;
   description: string;
-  color: string; // Cor para visualização
+  color: string;
 }
 
-// Interface para o item já posicionado no rolo
+// Item posicionado no rolo
 interface PlacedItem {
   x: number;
   y: number;
@@ -25,15 +25,21 @@ interface PlacedItem {
   height: number;
   description: string;
   color: string;
+  rotated: boolean;
+}
+
+// Ponto candidato para encaixe
+interface Point {
+  x: number;
+  y: number;
 }
 
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
-  // Cores pastéis para diferenciar os itens visualmente
   const COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
   const [items, setItems] = useState<PrintItem[]>([
-    { id: '1', width: 28, height: 35, quantity: 10, description: 'Estampa Costas', color: COLORS[0] },
-    { id: '2', width: 10, height: 10, quantity: 10, description: 'Logo Peito', color: COLORS[1] }
+    { id: '1', width: 28, height: 35, quantity: 1, description: 'Estampa Grande', color: COLORS[0] },
+    { id: '2', width: 10, height: 10, quantity: 4, description: 'Logo Pequeno', color: COLORS[1] }
   ]);
   
   const [layout, setLayout] = useState<PlacedItem[]>([]);
@@ -42,21 +48,20 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [appliedPrice, setAppliedPrice] = useState(60);
   const [priceTier, setPriceTier] = useState('');
   
-  // Constantes de impressão (Físicas)
+  // CONSTANTES DE IMPRESSÃO
   const ROLL_WIDTH_CM = 58; 
   const PAPER_MARGIN_CM = 1; 
-  const ITEM_GAP_CM = 1.5; 
+  const ITEM_GAP_CM = 1.0; // Reduzido para 1cm conforme solicitado
   const USABLE_WIDTH = ROLL_WIDTH_CM - (PAPER_MARGIN_CM * 2);
+  const START_Y = 0.5;
 
-  // Escala para visualização na tela (1cm = X pixels)
+  // Escala visual
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Ajusta a escala visual baseada na largura da coluna
   useEffect(() => {
     if (containerRef.current) {
-        const containerWidth = containerRef.current.offsetWidth - 32; // padding
-        // O rolo tem 58cm. Quantos pixels por cm cabem na tela?
+        const containerWidth = containerRef.current.offsetWidth - 32;
         const newScale = containerWidth / ROLL_WIDTH_CM;
         setScale(newScale);
     }
@@ -69,7 +74,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
       width: 10,
       height: 10,
       quantity: 1,
-      description: `Estampa ${items.length + 1}`,
+      description: `Arte ${items.length + 1}`,
       color: nextColor
     };
     setItems([...items, newItem]);
@@ -83,80 +88,129 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     setItems(items.map(i => (i.id === id ? { ...i, [field]: value } : i)));
   };
 
-  // --- O CÉREBRO: Algoritmo "Smart Tetris" (Shelf First Fit) ---
+  // --- ALGORITMO "TETRIS" (Bottom-Left Greedy com Rotação) ---
   useEffect(() => {
-    // 1. "Explodir" os itens pela quantidade (se tenho 10 logos, crio 10 objetos)
-    let allRects: PlacedItem[] = [];
+    // 1. Explodir itens pela quantidade
+    let itemsToPlace: { w: number, h: number, desc: string, color: string }[] = [];
     items.forEach(item => {
         for (let i = 0; i < item.quantity; i++) {
-            allRects.push({
-                x: 0, y: 0,
-                width: item.width,
-                height: item.height,
-                description: item.description,
-                color: item.color
-            });
+            itemsToPlace.push({ w: item.width, h: item.height, desc: item.description, color: item.color });
         }
     });
 
-    // 2. Ordenar por Altura (Decrescente) - Importante para eficiência do algoritmo
-    allRects.sort((a, b) => b.height - a.height);
+    // 2. Ordenar: Tentar encaixar os maiores/mais altos primeiro ajuda a criar "paredes" para os menores preencherem
+    // Ordenar por Altura Máxima (seja w ou h) decrescente funciona bem para rolos
+    itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
-    // 3. Algoritmo de Prateleira (Shelf Bin Packing)
-    let shelves: { y: number, height: number, currentWidth: number }[] = [];
-    let currentY = 0;
+    let placedRects: PlacedItem[] = [];
 
-    // Margem inicial do topo
-    const START_Y = 0.5; // cm (margem de segurança inicial)
+    // Função para checar colisão com itens já colocados
+    const checkOverlap = (x: number, y: number, w: number, h: number) => {
+        // Checa limites do papel
+        if (x + w > USABLE_WIDTH + PAPER_MARGIN_CM) return true; // Passou da largura útil (+margem esquerda)
 
-    allRects.forEach(rect => {
-        let placed = false;
-        
-        // Espaço ocupado pela peça + gap
-        const physicalW = rect.width + ITEM_GAP_CM;
-        const physicalH = rect.height + ITEM_GAP_CM;
+        // Checa sobreposição com outros itens (considerando GAP)
+        for (let r of placedRects) {
+            // A lógica aqui considera o GAP como uma "aura" em volta do item
+            // Se os retângulos (incluindo gap) se tocam, é overlap.
+            const rRight = r.x + r.width;
+            const rBottom = r.y + r.height;
+            const myRight = x + w;
+            const myBottom = y + h;
 
-        // Tenta encaixar em prateleiras existentes (buracos)
-        for (let shelf of shelves) {
-            // Verifica se cabe na largura E se a altura da peça não estoura muito a prateleira (opcional, aqui aceitamos se couber na largura)
-            if (shelf.currentWidth + physicalW <= USABLE_WIDTH) {
-                // Posiciona
-                rect.x = PAPER_MARGIN_CM + shelf.currentWidth;
-                
-                // Centraliza verticalmente na prateleira ou alinha ao topo? Alinhar ao topo da prateleira (shelf.y)
-                rect.y = shelf.y + START_Y; 
-                
-                shelf.currentWidth += physicalW;
-                placed = true;
-                break;
+            // Verifica intersecção com margem de segurança (GAP)
+            // Se (Meu Esquerda < Dele Direita + Gap) E (Meu Direita + Gap > Dele Esquerda) ...
+            if (
+                x < rRight + ITEM_GAP_CM &&
+                myRight + ITEM_GAP_CM > r.x &&
+                y < rBottom + ITEM_GAP_CM &&
+                myBottom + ITEM_GAP_CM > r.y
+            ) {
+                return true;
             }
         }
+        return false;
+    };
 
-        // Se não coube em nenhuma, cria nova prateleira
-        if (!placed) {
-            // Nova prateleira começa onde a última "linha" terminou
-            // A altura da prateleira é definida pela primeira peça (que é a mais alta pois ordenamos)
-            const shelfY = shelves.length > 0 ? shelves[shelves.length-1].y + shelves[shelves.length-1].height : 0;
+    // 3. Loop de Posicionamento
+    itemsToPlace.forEach(item => {
+        let bestPos: { x: number, y: number, rotated: boolean } | null = null;
+        let minY = Infinity;
+        let minX = Infinity;
+
+        // Gerar pontos candidatos baseados nos itens já existentes (Bottom-Left Heuristic)
+        // Pontos de interesse: (Margem, Topo) e para cada item já posto: (Sua Direita, Seu Topo)
+        let candidates: Point[] = [{ x: PAPER_MARGIN_CM, y: START_Y }];
+        
+        placedRects.forEach(r => {
+            // Ponto à direita do item existente
+            candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
+            // Ponto acima do item existente
+            candidates.push({ x: r.x, y: r.y + r.height + ITEM_GAP_CM });
+            // Ponto no inicio da linha na altura do item existente (reset de linha)
+            candidates.push({ x: PAPER_MARGIN_CM, y: r.y + r.height + ITEM_GAP_CM });
+        });
+
+        // Filtrar e ordenar candidatos (Prioridade: Y menor, depois X menor)
+        candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
+
+        // Testar posicionamento
+        for (let p of candidates) {
+            // Se esse ponto já é pior que o melhor encontrado, pula (otimização)
+            if (bestPos && p.y > bestPos.y) break;
+
+            // Teste 1: Orientação Normal
+            if (!checkOverlap(p.x, p.y, item.w, item.h)) {
+                if (p.y < minY || (p.y === minY && p.x < minX)) {
+                    minY = p.y;
+                    minX = p.x;
+                    bestPos = { x: p.x, y: p.y, rotated: false };
+                }
+            }
+
+            // Teste 2: Rotacionado (Se largura virar altura e vice-versa)
+            // Só tenta rodar se não for quadrado (otimização)
+            if (item.w !== item.h) {
+                if (!checkOverlap(p.x, p.y, item.h, item.w)) {
+                    // Preferência: Se a rotação me permite ficar na mesma altura (Y) ou mais baixo
+                    if (p.y < minY || (p.y === minY && p.x < minX)) {
+                        minY = p.y;
+                        minX = p.x;
+                        bestPos = { x: p.x, y: p.y, rotated: true };
+                    }
+                }
+            }
             
-            rect.x = PAPER_MARGIN_CM;
-            rect.y = shelfY + START_Y;
-            
-            shelves.push({
-                y: shelfY,
-                height: physicalH,
-                currentWidth: physicalW
-            });
-            placed = true;
+            // Se achamos um lugar muito bom (no topo), paramos de procurar
+            if (bestPos && bestPos.y <= START_Y + 0.1) break; 
         }
+
+        // Se por algum milagre não achou (não deveria acontecer pois sempre pode por lá embaixo), põe no final
+        if (!bestPos) {
+            const lastY = placedRects.length > 0 
+                ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM 
+                : START_Y;
+            bestPos = { x: PAPER_MARGIN_CM, y: lastY, rotated: false };
+        }
+
+        // Salva o item
+        placedRects.push({
+            x: bestPos.x,
+            y: bestPos.y,
+            width: bestPos.rotated ? item.h : item.w,
+            height: bestPos.rotated ? item.w : item.h, // Inverte dimensões se rodou
+            description: item.desc,
+            color: item.color,
+            rotated: bestPos.rotated
+        });
     });
 
     // 4. Calcular métricas finais
-    const totalHeightCm = shelves.reduce((acc, shelf) => acc + shelf.height, 0);
-    const finalMeters = totalHeightCm / 100;
-    // Margem final de segurança (corte)
-    const safeMeters = Math.ceil((finalMeters + 0.1) * 100) / 100;
+    const maxY = placedRects.reduce((max, r) => Math.max(max, r.y + r.height), 0);
+    const finalMeters = maxY / 100;
+    const safeMeters = Math.ceil((finalMeters + 0.1) * 100) / 100; // Margem 10cm final
 
-    // 5. Aplicar Tabela de Preço
+    // 5. Aplicar Tabela
     let currentPrice = 60; 
     let currentTier = 'Tabela Base (até 10m)';
 
@@ -168,7 +222,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         currentTier = 'Atacado (> 10m)';
     }
 
-    setLayout(allRects);
+    setLayout(placedRects);
     setTotalMeters(safeMeters);
     setAppliedPrice(currentPrice);
     setPriceTier(currentTier);
@@ -181,10 +235,10 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
       <div className="mb-6 shrink-0">
         <div className="flex items-center gap-3 text-sow-black mb-1">
           <div className="p-2 bg-purple-100 rounded-lg"><Printer className="w-6 h-6 text-purple-600" /></div>
-          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador de Rolo DTF</h2>
+          <h2 className="text-2xl font-helvetica font-bold tracking-tight">Otimizador de Rolo DTF (Tetris)</h2>
         </div>
         <p className="text-sow-grey text-sm font-medium">
-          Sistema "Smart Nesting": Reduz desperdício encaixando artes automaticamente.
+          Sistema inteligente de encaixe automático com rotação de peças para economia máxima de papel.
         </p>
       </div>
 
@@ -202,20 +256,21 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
 
                 <div className="space-y-3">
                     {items.map((item) => (
-                        <div key={item.id} className="flex flex-col gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
-                            <div className="flex items-center gap-2">
+                        // CORREÇÃO: Layout Flexbox para não esmagar inputs
+                        <div key={item.id} className="flex flex-col md:flex-row gap-2 items-end bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
+                            <div className="flex items-center gap-2 w-full md:flex-1">
                                 <div className="w-3 h-3 rounded-full shrink-0" style={{backgroundColor: item.color}}></div>
                                 <div className="flex-1">
                                     <InputGroup label="Descrição" name="d" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} />
                                 </div>
-                                <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
                             </div>
-                            <div className="flex gap-2">
-                                <div className="w-1/3"><InputGroup label="Larg (cm)" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" /></div>
-                                <div className="w-1/3"><InputGroup label="Alt (cm)" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" /></div>
-                                <div className="w-1/3"><InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" /></div>
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <div className="w-20"><InputGroup label="Larg" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" /></div>
+                                <div className="w-20"><InputGroup label="Alt" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" /></div>
+                                <div className="w-20"><InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" /></div>
+                                <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 pb-2">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -224,13 +279,13 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
 
             {/* Resumo Financeiro */}
             <div className="bg-white p-6 rounded-xl border-2 border-purple-500 shadow-lg">
-                <h3 className="font-helvetica font-bold uppercase tracking-widest text-xs text-sow-grey mb-4">Orçamento Estimado</h3>
+                <h3 className="font-helvetica font-bold uppercase tracking-widest text-xs text-sow-grey mb-4">Orçamento Otimizado</h3>
                 
                 <div className="flex justify-between items-end mb-2">
                     <span className="text-4xl font-helvetica font-bold text-sow-black">{formatCurrency(totalCost)}</span>
                     <div className="text-right">
                         <span className="text-sm font-bold text-purple-600 block">{totalMeters.toFixed(2)} metros</span>
-                        <span className="text-[10px] text-sow-grey">Rolo 58cm</span>
+                        <span className="text-[10px] text-sow-grey">Rolo 58cm (Gap {ITEM_GAP_CM}cm)</span>
                     </div>
                 </div>
 
@@ -257,11 +312,11 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             <div className="p-3 bg-white border-b border-sow-border flex justify-between items-center shadow-sm z-10">
                 <div className="flex items-center gap-2">
                     <Box className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs font-bold uppercase text-sow-grey">Simulação Visual do Rolo (58cm)</span>
+                    <span className="text-xs font-bold uppercase text-sow-grey">Simulação de Encaixe Automático</span>
                 </div>
                 <div className="flex items-center gap-4 text-[10px] font-medium text-sow-grey">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-300 rounded-sm"></span> Área Morta (Margem)</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 border border-gray-400 bg-white rounded-sm"></span> Área Útil</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-300 rounded-sm"></span> Área Morta</span>
+                    <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3 text-purple-600" /> Peça Rotacionada</span>
                 </div>
             </div>
 
@@ -277,43 +332,51 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                         backgroundPosition: '0 0, 10px 10px'
                     }}
                 >
-                    {/* Linha indicativa de 1 metro */}
-                    <div className="absolute left-0 w-full border-b border-red-300 border-dashed text-red-400 text-[10px] pl-1" style={{top: `${100 * scale}px`}}>1m</div>
+                    {/* Linhas indicativas de metro */}
+                    {[...Array(Math.ceil(totalMeters))].map((_, i) => (
+                        <div key={i} className="absolute left-0 w-full border-b border-red-300 border-dashed text-red-400 text-[10px] pl-1 font-bold z-0" style={{top: `${(i+1) * 100 * scale}px`}}>{i+1}m</div>
+                    ))}
                     
                     {/* Itens posicionados */}
                     {layout.map((rect, idx) => (
                         <div
                             key={idx}
-                            className="absolute flex items-center justify-center text-[10px] font-bold text-sow-black/60 overflow-hidden hover:opacity-90 transition-opacity cursor-pointer border border-black/10 shadow-sm"
-                            title={`${rect.description} (${rect.width}x${rect.height})`}
+                            className="absolute flex flex-col items-center justify-center text-[10px] font-bold text-sow-black/70 overflow-hidden hover:opacity-90 hover:scale-[1.02] transition-all cursor-pointer border border-black/20 shadow-sm z-10"
+                            title={`${rect.description}: ${rect.width}x${rect.height} (Rotacionado: ${rect.rotated ? 'Sim' : 'Não'})`}
                             style={{
                                 left: `${rect.x * scale}px`,
                                 top: `${rect.y * scale}px`,
                                 width: `${rect.width * scale}px`,
                                 height: `${rect.height * scale}px`,
                                 backgroundColor: rect.color,
-                                borderRadius: '2px'
+                                borderRadius: '3px'
                             }}
                         >
-                            {/* Mostra texto só se couber */}
-                            {rect.width * scale > 30 && rect.height * scale > 15 ? (
-                                <span className="truncate px-1">{rect.width}x{rect.height}</span>
-                            ) : ''}
+                            {/* Ícone de rotação se a peça foi virada */}
+                            {rect.rotated && <RefreshCw className="w-3 h-3 text-black/40 absolute top-1 right-1" />}
+                            
+                            {/* Texto (Só mostra se couber) */}
+                            {rect.width * scale > 30 && rect.height * scale > 15 && (
+                                <>
+                                    <span className="truncate px-1 max-w-full">{rect.width}x{rect.height}</span>
+                                    {rect.height * scale > 30 && <span className="text-[8px] opacity-60 truncate px-1 max-w-full">{rect.description}</span>}
+                                </>
+                            )}
                         </div>
                     ))}
 
                     {/* Régua Lateral */}
-                    <div className="absolute -right-8 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2 gap-[100px]" style={{gap: `${100 * scale}px`}}>
-                        <span>0m</span>
-                        <span>1m</span>
-                        <span>2m</span>
-                        <span>3m</span>
+                    <div className="absolute -right-8 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2" >
+                        <div className="sticky top-2 flex flex-col gap-1">
+                            <span className="font-bold text-purple-600">{totalMeters.toFixed(2)}m</span>
+                            <span className="h-4 w-px bg-purple-200 mx-auto"></span>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div className="absolute bottom-4 right-4 bg-black/80 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
-                Escala: 1cm = {scale.toFixed(1)}px
+            <div className="absolute bottom-4 right-4 bg-black/80 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none shadow-lg">
+                Zoom: 1cm = {scale.toFixed(1)}px
             </div>
         </div>
       </div>
