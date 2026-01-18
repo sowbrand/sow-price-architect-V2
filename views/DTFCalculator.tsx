@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw, Shirt, AlertTriangle } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowRight, Ruler, TrendingDown, Box, RefreshCw, Shirt, AlertTriangle, Download } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
+import html2canvas from 'html2canvas'; // Certifique-se de ter instalado
 import type { SettingsData } from '../types';
 
 interface DTFCalculatorProps {
@@ -33,7 +34,7 @@ interface PlacedItem {
   color: string;
   rotated: boolean;
   groupName: string;
-  error?: boolean; // Marca se o item não coube de jeito nenhum
+  error?: boolean; 
 }
 
 interface Point {
@@ -41,13 +42,12 @@ interface Point {
   y: number;
 }
 
-// Função de arredondamento para 2 casas decimais para evitar flutuação (ex: 57.0000001)
+// Função auxiliar para arredondamento preciso
 const round = (num: number) => Math.round(num * 100) / 100;
 
 export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const GROUP_COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
-  // Dados Iniciais (Exemplo)
   const [shirtGroups, setShirtGroups] = useState<ShirtGroup[]>([
     {
       id: '1',
@@ -78,18 +78,16 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [appliedPrice, setAppliedPrice] = useState(60);
   const [priceTier, setPriceTier] = useState('');
   const [hasErrors, setHasErrors] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // --- CONFIGURAÇÕES FÍSICAS RÍGIDAS ---
   const ROLL_WIDTH_CM = 58; 
   const PAPER_MARGIN_CM = 1; 
   const ITEM_GAP_CM = 1.0; 
-  
-  // Limites da Área Útil (Tolerância Zero)
-  const MIN_X = PAPER_MARGIN_CM; // 1.00
-  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; // 57.00
-  const MAX_W = MAX_X - MIN_X; // Largura máxima permitida para uma peça (56.00)
+  const MIN_X = PAPER_MARGIN_CM; 
+  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; 
+  const MAX_W = MAX_X - MIN_X;
 
-  // Escala Visual
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -101,7 +99,36 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }
   }, []);
 
-  // --- CRUD (Adicionar/Remover/Editar) ---
+  // --- FUNÇÃO DE DOWNLOAD PNG ---
+  const handleDownloadImage = async () => {
+    const element = document.getElementById('print-area');
+    if (!element) return;
+
+    setIsExporting(true);
+    try {
+        // Aguarda um momento para garantir renderização
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const canvas = await html2canvas(element, {
+            scale: 2, // Alta resolução
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true
+        });
+        
+        const link = document.createElement('a');
+        link.download = `SowPrice_Layout_${totalMeters.toFixed(2)}m.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (error) {
+        console.error("Erro ao gerar imagem", error);
+        alert("Erro ao baixar a imagem.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
+
+  // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
     const newGroup: ShirtGroup = {
@@ -149,11 +176,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     }));
   };
 
-  // --- ALGORITMO "TOLERÂNCIA ZERO" (Bin Packing Otimizado) ---
+  // --- ALGORITMO TOLERÂNCIA ZERO ---
   useEffect(() => {
     let errorFound = false;
-    
-    // 1. Preparar lista plana de itens
     let itemsToPlace: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
     
     shirtGroups.forEach(group => {
@@ -170,22 +195,14 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         });
     });
 
-    // 2. Ordenação Estratégica: ALTURA Decrescente
-    // Isso é crucial para o "Tetris". Peças altas primeiro definem o "skyline", peças baixas preenchem os buracos.
     itemsToPlace.sort((a, b) => Math.max(b.h, b.w) - Math.max(a.h, a.w));
 
     let placedRects: PlacedItem[] = [];
 
-    // Função de Verificação de Colisão RÍGIDA
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // [TRAVA 1] Limite Direito Absoluto (Área Morta)
-        // Usamos uma tolerância minúscula (0.01) para float bugs, mas a lógica é x+w > 57
         if (round(x + w) > MAX_X) return true; 
 
-        // [TRAVA 2] Colisão com outros itens
         for (let r of placedRects) {
-            // Coordenadas do item existente (com gap virtual em volta)
-            // Se eu tentar colocar algo no GAP de outro, conta como colisão
             const rRight = r.x + r.width;
             const rBottom = r.y + r.height;
             const myRight = x + w;
@@ -203,71 +220,45 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         return false;
     };
 
-    // Buscador de Melhor Posição
     const findBestPosition = (w: number, h: number) => {
-        // Se a peça é maior que a largura útil (56cm), ela NÃO CABE.
         if (w > MAX_W) return null;
 
-        let bestX = Infinity;
-        let bestY = Infinity;
-        let found = false;
-
-        // Gera candidatos. Pontos candidatos são: (MargemEsq, 0) E (Direita de cada item, Topo de cada item)
-        // Isso garante que testamos todos os "cantinhos".
         let candidates: Point[] = [{ x: MIN_X, y: 0 }];
         
         placedRects.forEach(r => {
-            // Candidato à direita (mantendo Y)
-            const nextX = round(r.x + r.width + ITEM_GAP_CM);
-            if (nextX + w <= MAX_X) {
-                candidates.push({ x: nextX, y: r.y });
+            const rightX = round(r.x + r.width + ITEM_GAP_CM);
+            if (round(rightX + w) <= MAX_X) {
+                candidates.push({ x: rightX, y: r.y });
             }
-            // Candidato abaixo (mantendo X)
-            candidates.push({ x: r.x, y: round(r.y + r.height + ITEM_GAP_CM) });
-            // Candidato reset de linha (encostado na margem esquerda, na altura do item)
-            candidates.push({ x: MIN_X, y: round(r.y + r.height + ITEM_GAP_CM) });
+            const bottomY = round(r.y + r.height + ITEM_GAP_CM);
+            candidates.push({ x: r.x, y: bottomY });
+            candidates.push({ x: MIN_X, y: bottomY });
         });
 
-        // Filtra candidatos fora do papel (redundante mas seguro)
         candidates = candidates.filter(p => p.x + w <= MAX_X);
 
-        // Ordena candidatos: Menor Y (Topo) >> Menor X (Esquerda)
         candidates.sort((a, b) => {
-            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; // Se Y for diferente, menor Y ganha
-            return a.x - b.x; // Se Y for igual, menor X ganha
+            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
+            return a.x - b.x; 
         });
 
-        // Testa o primeiro que der certo
         for (let p of candidates) {
-            if (!checkOverlap(p.x, p.y, w, h)) {
-                return { x: p.x, y: p.y };
-            }
+            if (!checkOverlap(p.x, p.y, w, h)) return { x: p.x, y: p.y };
         }
         
-        // Se não achou em nenhum buraco, coloca no finalzão absoluto
         const lastY = placedRects.length > 0 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM : 0;
         return { x: MIN_X, y: round(lastY) };
     };
 
-    // 3. Execução do Loop Principal
     itemsToPlace.forEach(item => {
-        // Tenta Normal
         const posNormal = findBestPosition(item.w, item.h);
-        // Tenta Rotacionado
         const posRotated = findBestPosition(item.h, item.w);
 
         let finalPos;
         let isRotated = false;
 
-        // Lógica de Decisão:
-        // 1. Se nenhum couber (ex: peça gigante de 60cm), marca erro.
-        // 2. Se só um couber, usa ele.
-        // 3. Se ambos couberem, usa o que tiver menor Y.
-
         if (!posNormal && !posRotated) {
-            // Erro Crítico: Peça maior que o rolo
             errorFound = true;
-            // Força entrada no layout apenas para alertar, na posição 0,0 com flag de erro
             placedRects.push({
                 x: 0, y: 0, width: item.w, height: item.h, description: item.desc, 
                 color: '#ff0000', rotated: false, groupName: item.groupName, error: true
@@ -282,15 +273,13 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             finalPos = posRotated;
             isRotated = true;
         } else if (posNormal && posRotated) {
-            // Ambos cabem. Quem é melhor? (Menor Y ganha)
-            if (posRotated.y < posNormal.y - 0.1) { // Rotação sobe significativamente?
+            if (posRotated.y < posNormal.y - 0.1) {
                 finalPos = posRotated;
                 isRotated = true;
             } else if (posRotated.y > posNormal.y + 0.1) {
                 finalPos = posNormal;
                 isRotated = false;
             } else {
-                // Y igual. Quem fica mais a esquerda?
                 if (posRotated.x < posNormal.x) {
                     finalPos = posRotated;
                     isRotated = true;
@@ -315,12 +304,10 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         }
     });
 
-    // 4. Calcular Totais
     const maxY = placedRects.filter(r => !r.error).reduce((max, r) => Math.max(max, r.y + r.height), 0);
     const finalMeters = maxY / 100;
-    const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; // +5cm margem técnica
+    const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
 
-    // 5. Preços
     let currentPrice = 60; 
     let currentTier = 'Tabela Base (até 10m)';
     if (safeMeters > 20) { currentPrice = 45; currentTier = 'Atacado Super (> 20m)'; }
@@ -365,6 +352,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
+                            
                             <div className="grid grid-cols-3 gap-3">
                                 <div className="col-span-2">
                                     <InputGroup label="Nome da Camiseta" name="gn" value={group.name} onChange={(e) => updateShirtGroup(group.id, 'name', e.target.value)} />
@@ -416,7 +404,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                 {hasErrors && (
                     <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" />
-                        <span>Atenção: Existem peças maiores que a largura do rolo ({ROLL_WIDTH_CM}cm)!</span>
+                        <span>Atenção: Peças maiores que 56cm ou rolo inválido!</span>
                     </div>
                 )}
                 <div className="flex justify-between items-end mb-2">
@@ -440,15 +428,26 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             <div className="p-3 bg-white border-b border-sow-border flex justify-between items-center shadow-sm z-10">
                 <div className="flex items-center gap-2">
                     <Box className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs font-bold uppercase text-sow-grey">Simulação de Encaixe</span>
+                    <span className="text-xs font-bold uppercase text-sow-grey">Visualização do Encaixe</span>
                 </div>
-                <div className="flex items-center gap-4 text-[10px] font-medium text-sow-grey">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-sm"></span> Área Morta (1cm)</span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 text-[10px] text-sow-grey">
+                        <span className="w-2 h-2 bg-red-500 rounded-sm"></span> Área Morta (1cm)
+                    </div>
+                    {/* BOTÃO DE DOWNLOAD */}
+                    <button 
+                        onClick={handleDownloadImage}
+                        disabled={isExporting}
+                        className="flex items-center gap-1 text-[10px] font-bold bg-sow-black text-white px-3 py-1.5 rounded hover:bg-sow-green transition-all disabled:opacity-50"
+                    >
+                        {isExporting ? '...' : <><Download className="w-3 h-3" /> Baixar PNG</>}
+                    </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 flex justify-center" ref={containerRef}>
                 <div 
+                    id="print-area" 
                     className="bg-white shadow-2xl relative transition-all duration-300 border-x-8 border-gray-300"
                     style={{
                         width: `${ROLL_WIDTH_CM * scale}px`, 
@@ -465,7 +464,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                     
                     {/* ITENS POSICIONADOS */}
                     {layout.map((rect, idx) => {
-                        if (rect.error) return null; // Não desenha se for inválido
+                        if (rect.error) return null;
                         return (
                             <div
                                 key={idx}
@@ -488,9 +487,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                         );
                     })}
 
-                    {/* ÁREA MORTA (ACIMA DE TUDO - Z-INDEX MAXIMO 50) */}
-                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/30 border-r border-red-500 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
-                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/30 border-l border-red-500 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
+                    {/* ÁREA MORTA */}
+                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/20 border-r border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
+                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/20 border-l border-red-500/50 z-50 pointer-events-none" style={{width: `${PAPER_MARGIN_CM * scale}px`}}></div>
 
                     {/* Régua Lateral */}
                     <div className="absolute -right-8 top-0 bottom-0 w-6 flex flex-col items-center text-[9px] text-gray-400 pt-2" >
