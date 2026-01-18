@@ -7,7 +7,7 @@ import { PriceCard } from '../components/PriceCard';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { DTFCalculator } from './DTFCalculator'; // IMPORTAÇÃO DA CALCULADORA DTF
 import { INITIAL_PRODUCT } from '../constants/defaults';
-import type { SettingsData, ProductInput, CalculationResult, Embellishment, DTFResultData } from '../types';
+import type { SettingsData, ProductInput, CalculationResult, Embellishment } from '../types';
 
 interface PricingCalculatorProps {
   settings: SettingsData;
@@ -17,8 +17,9 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     const [input, setInput] = useState<ProductInput>(INITIAL_PRODUCT);
     const [result, setResult] = useState<CalculationResult | null>(null);
     
-    // --- ESTADO PARA DADOS DO DTF ---
-    const [dtfData, setDtfData] = useState<DTFResultData | null>(null);
+    // --- ESTADOS PARA INPUT MANUAL DO DTF ---
+    const [dtfPrintManual, setDtfPrintManual] = useState(0);
+    const [dtfAppManual, setDtfAppManual] = useState(0);
 
     useEffect(() => {
         if (input.sewingCost === INITIAL_PRODUCT.sewingCost && settings.serviceCosts.sewingStandard !== input.sewingCost) {
@@ -26,34 +27,16 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         }
     }, [settings.serviceCosts]);
 
-    // Efeito para atualizar custo unitário quando o DTF muda (via botão)
-    useEffect(() => {
-        if (dtfData && input.batchSize > 0) {
-            // Verifica se tem item DTF na lista
-            const hasDTF = input.embellishments.some(e => e.type === 'DTF');
-            
-            if (hasDTF) {
-                const totalDtfCost = dtfData.totalCost;
-                const unitCost = totalDtfCost / input.batchSize;
-
-                // Atualiza o custo calculado dentro do item de embelezamento
-                setInput(prev => ({
-                    ...prev,
-                    embellishments: prev.embellishments.map(e => 
-                        e.type === 'DTF' ? { ...e, calculatedUnitCost: unitCost } : e
-                    )
-                }));
-            }
-        }
-    }, [dtfData, input.batchSize]);
-
-    // Recalcula cenário quando inputs mudam
+    // Recalcula cenário
     useEffect(() => {
         const calculatedInput = { ...input };
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
         
-        if (dtfItemIndex >= 0 && dtfData) {
-             const unitCost = dtfData.totalCost / input.batchSize;
+        if (dtfItemIndex >= 0) {
+             const totalDtfCost = dtfPrintManual + dtfAppManual;
+             const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
+             
+             // Injeta o valor manual no cálculo
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  printSetupCost: unitCost, 
@@ -62,7 +45,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              };
         }
         setResult(calculateScenario(calculatedInput, settings));
-    }, [input, settings, dtfData]);
+    }, [input, settings, dtfPrintManual, dtfAppManual]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const { name, value, type } = e.target;
@@ -186,19 +169,44 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                               </select>
                           </div>
 
+                          {/* Renderização Condicional baseada no Tipo */}
                           {item.type === 'DTF' ? (
                               <div className="bg-purple-50 border border-purple-200 rounded p-3">
-                                  <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-2">
+                                  <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-3 border-b border-purple-200 pb-2">
                                       <CheckCircle2 className="w-4 h-4" /> <span>Integrado com Otimizador</span>
                                   </div>
-                                  {dtfData ? (
-                                      <div className="text-xs space-y-1">
-                                          <div className="flex justify-between"><span>Custo Total do Lote:</span> <span className="font-bold">{formatCurrency(dtfData.totalCost)}</span></div>
-                                          <div className="flex justify-between text-purple-700"><span>Custo por Peça:</span> <span className="font-bold">{formatCurrency(dtfData.totalCost / input.batchSize)}</span></div>
+                                  
+                                  {/* INPUTS MANUAIS PARA DTF */}
+                                  <div className="grid grid-cols-2 gap-3 mb-2">
+                                      <div>
+                                          <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Impressão (Total Lote)</label>
+                                          <div className="relative">
+                                              <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
+                                              <input 
+                                                  type="number" 
+                                                  value={dtfPrintManual || ''} 
+                                                  onChange={(e) => setDtfPrintManual(parseFloat(e.target.value))}
+                                                  className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"
+                                              />
+                                          </div>
                                       </div>
-                                  ) : <span className="text-xs text-purple-400">Configure no painel ao lado e clique em "Aplicar"...</span>}
+                                      <div>
+                                          <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Aplicação (Total Lote)</label>
+                                          <div className="relative">
+                                              <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
+                                              <input 
+                                                  type="number" 
+                                                  value={dtfAppManual || ''} 
+                                                  onChange={(e) => setDtfAppManual(parseFloat(e.target.value))}
+                                                  className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"
+                                              />
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div className="text-[10px] text-purple-400 italic text-center">Copie os valores do painel ao lado</div>
                               </div>
                           ) : (
+                              /* Outros tipos (Silk, Bordado) mantêm inputs manuais */
                               item.type === 'SILK' ? (
                                   <div className="grid grid-cols-2 gap-3">
                                       <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', parseFloat(e.target.value))} type="number" />
@@ -232,9 +240,10 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             </div>
         </div>
 
-        {/* COLUNA DIREITA: RESULTADOS OU CALCULADORA DTF */}
+        {/* COLUNA DIREITA: OTIMIZADOR (VISÍVEL APENAS SE DTF) */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
+            {/* SE DTF ESTIVER ATIVO, MOSTRA A CALCULADORA NO TOPO */}
             {hasDTFSelection && (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 h-[600px] flex flex-col">
                     <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
@@ -243,8 +252,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
-                            {/* AQUI É A INTEGRAÇÃO REAL COM O CALLBACK */}
-                            <DTFCalculator settings={settings} onCalculationChange={setDtfData} />
+                            {/* OTIMIZADOR AGORA APENAS VISUAL */}
+                            <DTFCalculator settings={settings} />
                         </div>
                     </div>
                 </div>

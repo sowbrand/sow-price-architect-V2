@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, Box, RefreshCw, Shirt, AlertTriangle, Download, Users, Building2, CheckCircle2 } from 'lucide-react';
+import { Printer, Plus, Trash2, Box, RefreshCw, Shirt, AlertTriangle, Download, Users, Building2 } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import html2canvas from 'html2canvas'; 
-import type { SettingsData, DTFResultData } from '../types';
+import type { SettingsData } from '../types';
 
 interface DTFCalculatorProps {
   settings: SettingsData;
-  onCalculationChange?: (data: DTFResultData) => void; // AQUI ESTAVA FALTANDO
+  // onCalculationChange removido pois agora é manual
 }
 
 // --- ESTRUTURAS DE DADOS ---
@@ -43,7 +43,7 @@ interface Point {
   y: number;
 }
 
-export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalculationChange }) => {
+export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const GROUP_COLORS = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'];
 
   // Dados Iniciais
@@ -132,25 +132,6 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }
   };
 
-  // --- FUNÇÃO PARA O BOTÃO "APLICAR NO ORÇAMENTO" ---
-  const handleApplyToBudget = () => {
-    if (onCalculationChange) {
-        onCalculationChange({
-            totalMeters,
-            printCost,
-            appCost,
-            totalCost: printCost + appCost,
-            totalItems: totalApplications,
-            priceTier,
-            isOutsourced: appType === 'outsourced'
-        });
-        // Feedback visual simples
-        alert('Custo aplicado ao orçamento com sucesso!');
-    } else {
-        console.error("Função de integração não conectada pelo componente pai.");
-    }
-  };
-
   // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
@@ -187,12 +168,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }));
   };
 
-  // --- ALGORITMO OTIMIZADO V5 + CÁLCULO DE SERVIÇO ---
+  // --- ALGORITMO OTIMIZADO V5 ---
   useEffect(() => {
     let errorFound = false;
     let items: { w: number, h: number, desc: string, color: string, groupName: string }[] = [];
     
-    // Contagem para Aplicação (Serviço)
+    // Contagem para Aplicação
     let totalApps = 0;
 
     // 1. Flatten e Contagem
@@ -218,7 +199,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
         setAppCost(totalApps * unitCost);
     }
 
-    // 2. Ordenação Híbrida Inteligente
+    // 2. Ordenação
     items.sort((a, b) => {
         const maxDimA = Math.max(a.w, a.h);
         const maxDimB = Math.max(b.w, b.h);
@@ -333,7 +314,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     setPrintCost(safeMeters * price);
     setHasErrors(errorFound);
 
-  }, [shirtGroups, appType]); // Recalcula se mudar camisas ou tipo de aplicação
+  }, [shirtGroups, appType]); 
 
   return (
     <div className="h-full flex flex-col font-montserrat overflow-hidden">
@@ -387,11 +368,10 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                 <button onClick={addShirtGroup} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:border-purple-500 hover:text-purple-600 flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> Novo Modelo</button>
             </div>
             
-            {/* PAINEL DE CUSTOS OTIMIZADO */}
+            {/* PAINEL DE CUSTOS (APENAS VISUALIZACAO) */}
             <div className="bg-white p-6 rounded-xl border-2 border-purple-500 shadow-lg mt-auto space-y-4">
                 {hasErrors && <div className="mb-4 bg-red-100 text-red-700 p-3 rounded text-xs flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> <span>Atenção: Itens excedendo a largura do rolo!</span></div>}
                 
-                {/* 1. SELETOR DE MÃO DE OBRA */}
                 <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button 
                         onClick={() => setAppType('internal')}
@@ -407,14 +387,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     </button>
                 </div>
 
-                {/* 2. TOTAIS GERAIS */}
                 <div>
                     <div className="flex justify-between items-end">
                         <span className="text-xs font-bold text-gray-500 uppercase">Total Impressão (DTF)</span>
                         <span className="text-xl font-helvetica font-bold text-sow-black">{formatCurrency(printCost)}</span>
                     </div>
                     
-                    {/* LINHA DE CUSTO DE APLICAÇÃO DISCRETA */}
                     <div className="flex justify-between items-end mt-1 pt-1 border-t border-dashed border-gray-200">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-gray-400 uppercase">Aplicação ({totalApplications} un)</span>
@@ -425,7 +403,6 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                         </span>
                     </div>
 
-                    {/* TOTAL GERAL SOMADO (OPCIONAL, MAS ÚTIL) */}
                     <div className="flex justify-between items-end mt-3 pt-2 border-t border-purple-100">
                          <span className="text-xs font-bold text-purple-800 uppercase">Custo Final Produção</span>
                          <span className="text-2xl font-black text-purple-700">{formatCurrency(printCost + appCost)}</span>
@@ -436,14 +413,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     <span>{totalMeters.toFixed(2)}m utilizados</span>
                     <span>{priceTier}</span>
                 </div>
-
-                {/* BOTÃO APLICAR NO ORÇAMENTO - AGORA FUNCIONAL */}
-                <button 
-                    onClick={handleApplyToBudget} 
-                    className="w-full mt-3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
-                >
-                    <CheckCircle2 className="w-4 h-4" /> Aplicar no Orçamento
-                </button>
+                {/* BOTÃO REMOVIDO CONFORME SOLICITADO */}
             </div>
         </div>
 
