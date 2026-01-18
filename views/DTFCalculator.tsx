@@ -7,7 +7,7 @@ import type { SettingsData, DTFResultData } from '../types';
 
 interface DTFCalculatorProps {
   settings: SettingsData;
-  onCalculationChange?: (data: DTFResultData) => void; // Adicionado para permitir o envio
+  onCalculationChange?: (data: DTFResultData) => void; // AQUI ESTAVA FALTANDO
 }
 
 // --- ESTRUTURAS DE DADOS ---
@@ -132,7 +132,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }
   };
 
-  // --- AÇÃO DO BOTÃO APLICAR ---
+  // --- FUNÇÃO PARA O BOTÃO "APLICAR NO ORÇAMENTO" ---
   const handleApplyToBudget = () => {
     if (onCalculationChange) {
         onCalculationChange({
@@ -145,9 +145,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
             isOutsourced: appType === 'outsourced'
         });
         // Feedback visual simples
-        alert(`Sucesso! Valor de ${formatCurrency(printCost + appCost)} enviado para a precificação.`);
+        alert('Custo aplicado ao orçamento com sucesso!');
     } else {
-        console.error("Função de integração não encontrada");
+        console.error("Função de integração não conectada pelo componente pai.");
     }
   };
 
@@ -437,10 +437,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     <span>{priceTier}</span>
                 </div>
 
-                {/* BOTÃO DE AÇÃO - AGORA FUNCIONAL */}
+                {/* BOTÃO APLICAR NO ORÇAMENTO - AGORA FUNCIONAL */}
                 <button 
-                    type="button"
-                    onClick={handleApplyToBudget}
+                    onClick={handleApplyToBudget} 
                     className="w-full mt-3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
                 >
                     <CheckCircle2 className="w-4 h-4" /> Aplicar no Orçamento

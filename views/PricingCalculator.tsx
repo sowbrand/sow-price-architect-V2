@@ -232,6 +232,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             </div>
         </div>
 
+        {/* COLUNA DIREITA: RESULTADOS OU CALCULADORA DTF */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
             {hasDTFSelection && (
@@ -242,7 +243,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
-                            {/* AQUI É A INTEGRAÇÃO REAL */}
+                            {/* AQUI É A INTEGRAÇÃO REAL COM O CALLBACK */}
                             <DTFCalculator settings={settings} onCalculationChange={setDtfData} />
                         </div>
                     </div>
