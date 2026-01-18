@@ -7,7 +7,7 @@ import type { SettingsData, DTFResultData } from '../types';
 
 interface DTFCalculatorProps {
   settings: SettingsData;
-  onCalculationChange?: (data: DTFResultData) => void;
+  onCalculationChange?: (data: DTFResultData) => void; // Adicionado para permitir o envio
 }
 
 // --- ESTRUTURAS DE DADOS ---
@@ -132,6 +132,25 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }
   };
 
+  // --- AÇÃO DO BOTÃO APLICAR ---
+  const handleApplyToBudget = () => {
+    if (onCalculationChange) {
+        onCalculationChange({
+            totalMeters,
+            printCost,
+            appCost,
+            totalCost: printCost + appCost,
+            totalItems: totalApplications,
+            priceTier,
+            isOutsourced: appType === 'outsourced'
+        });
+        // Feedback visual simples
+        alert(`Sucesso! Valor de ${formatCurrency(printCost + appCost)} enviado para a precificação.`);
+    } else {
+        console.error("Função de integração não encontrada");
+    }
+  };
+
   // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
@@ -166,22 +185,6 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     setShirtGroups(shirtGroups.map(g => g.id !== gid ? g : {
         ...g, prints: g.prints.map(p => p.id === pid ? { ...p, [field]: value } : p)
     }));
-  };
-
-  // --- FUNÇÃO PARA APLICAR NO ORÇAMENTO (CORREÇÃO AQUI) ---
-  const handleApplyToBudget = () => {
-    if (onCalculationChange) {
-        onCalculationChange({
-            totalMeters,
-            printCost,
-            appCost,
-            totalCost: printCost + appCost, // Soma impressão + aplicação
-            totalItems: totalApplications,
-            priceTier,
-            isOutsourced: appType === 'outsourced'
-        });
-        alert('Valores de DTF aplicados ao orçamento com sucesso!');
-    }
   };
 
   // --- ALGORITMO OTIMIZADO V5 + CÁLCULO DE SERVIÇO ---
@@ -434,9 +437,10 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     <span>{priceTier}</span>
                 </div>
 
-                {/* BOTÃO DE APLICAR - ADICIONADO AQUI */}
+                {/* BOTÃO DE AÇÃO - AGORA FUNCIONAL */}
                 <button 
-                    onClick={handleApplyToBudget} 
+                    type="button"
+                    onClick={handleApplyToBudget}
                     className="w-full mt-3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
                 >
                     <CheckCircle2 className="w-4 h-4" /> Aplicar no Orçamento

@@ -242,6 +242,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
+                            {/* AQUI É A INTEGRAÇÃO REAL */}
                             <DTFCalculator settings={settings} onCalculationChange={setDtfData} />
                         </div>
                     </div>
