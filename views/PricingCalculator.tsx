@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, AlertTriangle, Download, Info, Printer, CheckCircle2, DollarSign } from 'lucide-react';
+import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, AlertTriangle, Download, Info, CheckCircle2, DollarSign, Printer } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
 import { InputGroup } from '../components/InputGroup';
@@ -20,21 +20,17 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     // --- ESTADO PARA DADOS DO DTF ---
     const [dtfData, setDtfData] = useState<DTFResultData | null>(null);
 
-    useEffect(() => {
-        if (input.sewingCost === INITIAL_PRODUCT.sewingCost && settings.serviceCosts.sewingStandard !== input.sewingCost) {
-            setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
-        }
-    }, [settings.serviceCosts]);
-
     // Efeito para atualizar custo unitário quando o DTF muda
     useEffect(() => {
         if (dtfData && input.batchSize > 0) {
+            // Verifica se tem item DTF na lista
             const hasDTF = input.embellishments.some(e => e.type === 'DTF');
             
             if (hasDTF) {
                 const totalDtfCost = dtfData.totalCost;
                 const unitCost = totalDtfCost / input.batchSize;
 
+                // Atualiza o custo calculado dentro do item de embelezamento
                 setInput(prev => ({
                     ...prev,
                     embellishments: prev.embellishments.map(e => 
@@ -45,27 +41,26 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         }
     }, [dtfData, input.batchSize]);
 
+    useEffect(() => {
+        if (input.sewingCost === INITIAL_PRODUCT.sewingCost && settings.serviceCosts.sewingStandard !== input.sewingCost) {
+            setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
+        }
+    }, [settings.serviceCosts]);
+
     // Recalcula cenário quando inputs mudam
     useEffect(() => {
-        // Substituição simples: Se tiver DTF e dados calculados, sobrepõe o custo manual
         const calculatedInput = { ...input };
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
         
         if (dtfItemIndex >= 0 && dtfData) {
-             // Como a função de cálculo original pode não esperar 'calculatedUnitCost', 
-             // vamos injetar o custo calculado no campo 'printSetupCost' (como um hack seguro)
-             // e zerar os metros usados manuais para não duplicar.
              const unitCost = dtfData.totalCost / input.batchSize;
-             
-             // Atualiza o item DTF na lista clonada para o cálculo
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
-                 printSetupCost: unitCost, // Usamos este campo para passar o valor unitário total
+                 printSetupCost: unitCost, 
                  printPassCost: 0,
-                 dtfMetersUsed: 0 // Zera para não calcular pela fórmula padrão
+                 dtfMetersUsed: 0 
              };
         }
-        
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfData]);
 
@@ -136,15 +131,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     const PRODUCT_CATEGORIES = ['Camiseta Oversized', 'Camiseta Streetwear', 'Camiseta Casual', 'Camiseta Slim', 'Camiseta Feminina', 'Outro'];
     const getSelectionButtonClass = (isActive: boolean) => `flex-1 py-2.5 text-xs font-montserrat font-bold rounded-lg border transition-all duration-200 ${isActive ? 'bg-sow-black text-white border-sow-black shadow-md' : 'bg-white text-sow-grey border-sow-border hover:bg-gray-50'}`;
 
-    // Verifica se temos DTF selecionado
     const hasDTFSelection = input.embellishments.some(e => e.type === 'DTF');
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
-        {/* COLUNA ESQUERDA: INPUTS */}
         <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
             
-            {/* Definição do Produto */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                 <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
                 <div className="space-y-3">
@@ -154,7 +146,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 </div>
             </div>
 
-            {/* Matéria Prima */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Package className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">1. Matéria-Prima & Corte</h3></div>
               <div className="grid grid-cols-2 gap-3">
@@ -176,7 +167,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
-            {/* Beneficiamento */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center justify-between mb-4 border-b border-sow-border pb-2">
                   <div className="flex items-center gap-2 text-sow-black"><Layers className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">2. Beneficiamento</h3></div>
@@ -195,7 +185,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                               </select>
                           </div>
 
-                          {/* Renderização Condicional baseada no Tipo */}
                           {item.type === 'DTF' ? (
                               <div className="bg-purple-50 border border-purple-200 rounded p-3">
                                   <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-2">
@@ -209,7 +198,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                                   ) : <span className="text-xs text-purple-400">Configure no painel ao lado...</span>}
                               </div>
                           ) : (
-                              /* Outros tipos (Silk, Bordado) mantêm inputs manuais */
                               item.type === 'SILK' ? (
                                   <div className="grid grid-cols-2 gap-3">
                                       <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', parseFloat(e.target.value))} type="number" />
@@ -227,7 +215,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
-            {/* Confecção e Logística */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Truck className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">3. Confecção & Logística</h3></div>
                <div className="grid grid-cols-2 gap-3">
@@ -244,10 +231,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             </div>
         </div>
 
-        {/* COLUNA DIREITA: RESULTADOS OU CALCULADORA DTF */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
-            {/* SE DTF ESTIVER ATIVO, MOSTRA A CALCULADORA NO TOPO */}
             {hasDTFSelection && (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 h-[600px] flex flex-col">
                     <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
@@ -256,7 +241,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
-                            {/* AQUI É A INTEGRAÇÃO REAL */}
                             <DTFCalculator settings={settings} onCalculationChange={setDtfData} />
                         </div>
                     </div>
@@ -268,7 +252,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 <button onClick={handleExportXLS} className="w-full py-4 bg-white border border-sow-border hover:border-sow-green text-sow-black hover:text-sow-green font-montserrat font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-soft group mt-2"><Download className="w-5 h-5 text-sow-grey group-hover:text-sow-green transition-colors" /><span>Exportar Planilha (XLS)</span></button>
             </div>
             
-            {/* Gráficos e Tabelas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
                 <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col">
                     <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-6 tracking-wider">Composição do Preço</h3>
@@ -290,11 +273,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     <div className="w-full">
                         <table className="w-full text-sm text-left"><tbody className="divide-y divide-sow-border font-montserrat font-medium text-sow-black">
                             <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Matéria-Prima</td><td className="py-2 text-right">{result ? formatCurrency(result.materialUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Corte & Risco</td><td className="py-2 text-right">{result ? formatCurrency(result.plotterUnit + result.cuttingLaborUnit) : '-'}</td></tr>
                             <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Beneficiamento</td><td className="py-2 text-right">{result ? formatCurrency(result.processingUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Confecção</td><td className="py-2 text-right">{result ? formatCurrency(result.sewingUnit) : '-'}</td></tr>
-                            <tr className="bg-sow-light font-bold text-sow-black"><td className="py-2 pl-2 text-[11px] uppercase tracking-wide">Custo Industrial</td><td className="py-2 text-right pr-2">{result ? formatCurrency(result.industrialCostUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Rateio Fixo</td><td className="py-2 text-right">{result ? formatCurrency(result.fixedOverheadUnit) : '-'}</td></tr>
                             <tr className="border-t-2 border-sow-black font-bold text-base"><td className="py-3 pl-2 tracking-tight">CUSTO FINAL</td><td className="py-3 text-right pr-2">{result ? formatCurrency(result.totalProductionCost) : '-'}</td></tr>
                         </tbody></table>
                     </div>
