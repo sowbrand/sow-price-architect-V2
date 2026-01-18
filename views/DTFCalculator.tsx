@@ -48,15 +48,13 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [appliedPrice, setAppliedPrice] = useState(60);
   const [priceTier, setPriceTier] = useState('');
   
-  // --- CONFIGURAÇÕES FÍSICAS RIGOROSAS ---
+  // CONSTANTES DE IMPRESSÃO
   const ROLL_WIDTH_CM = 58; 
-  const PAPER_MARGIN_CM = 1; // Margem de segurança lateral
-  const ITEM_GAP_CM = 1.0; // Espaço entre artes (reduzido)
-  
-  // Limites Globais (Coordenadas absolutas no papel 0 a 58)
-  const MIN_X = PAPER_MARGIN_CM; // Começa em 1cm
-  const MAX_X = ROLL_WIDTH_CM - PAPER_MARGIN_CM; // Termina em 57cm
-  
+  const PAPER_MARGIN_CM = 1; 
+  const ITEM_GAP_CM = 1.0; 
+  const USABLE_WIDTH = ROLL_WIDTH_CM - (PAPER_MARGIN_CM * 2);
+  const START_Y = 0.5; // Ajuste para começar no topo relativo
+
   // Escala visual
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,7 +88,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     setItems(items.map(i => (i.id === id ? { ...i, [field]: value } : i)));
   };
 
-  // --- ALGORITMO "TETRIS" V2 (Limites Rigorosos) ---
+  // --- ALGORITMO "TETRIS" (Bottom-Left Greedy com Rotação) ---
   useEffect(() => {
     // 1. Explodir itens pela quantidade
     let itemsToPlace: { w: number, h: number, desc: string, color: string }[] = [];
@@ -100,16 +98,15 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         }
     });
 
-    // 2. Ordenar: Maior altura primeiro (estratégia clássica de Bin Packing)
+    // 2. Ordenar: Tentar encaixar os maiores/mais altos primeiro
     itemsToPlace.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h));
 
     let placedRects: PlacedItem[] = [];
 
-    // Função de colisão precisa
+    // Função para checar colisão com itens já colocados
     const checkOverlap = (x: number, y: number, w: number, h: number) => {
-        // REGRA DE OURO 1: Não invadir margem direita
-        // Se a posição X + Largura da Imagem for maior que 57cm, BLOQUEIA.
-        if (x + w > MAX_X) return true; 
+        // Checa limites do papel
+        if (x + w > USABLE_WIDTH + PAPER_MARGIN_CM) return true; 
 
         // Checa sobreposição com outros itens (considerando GAP)
         for (let r of placedRects) {
@@ -118,8 +115,6 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
             const myRight = x + w;
             const myBottom = y + h;
 
-            // Lógica AABB com Gap:
-            // Verifica se a "caixa expandida com gap" da nova imagem toca a "caixa expandida" das existentes
             if (
                 x < rRight + ITEM_GAP_CM &&
                 myRight + ITEM_GAP_CM > r.x &&
@@ -138,29 +133,22 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
         let minY = Infinity;
         let minX = Infinity;
 
-        // REGRA DE OURO 2: Topo zero absoluto. 
-        // Pontos candidatos iniciais
-        let candidates: Point[] = [{ x: MIN_X, y: 0 }]; // (1, 0)
+        // Gerar pontos candidatos
+        let candidates: Point[] = [{ x: PAPER_MARGIN_CM, y: 0 }]; // Começa no Y=0 absoluto
         
         placedRects.forEach(r => {
-            // Tenta colar à direita do item existente
-            if (r.x + r.width + ITEM_GAP_CM + item.w <= MAX_X) {
-                candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
-            }
-            // Tenta colar abaixo do item existente
+            candidates.push({ x: r.x + r.width + ITEM_GAP_CM, y: r.y });
             candidates.push({ x: r.x, y: r.y + r.height + ITEM_GAP_CM });
-            // Tenta início de linha na altura do item existente (Reset de linha)
-            candidates.push({ x: MIN_X, y: r.y + r.height + ITEM_GAP_CM });
+            candidates.push({ x: PAPER_MARGIN_CM, y: r.y + r.height + ITEM_GAP_CM });
         });
 
-        // Ordenar candidatos: Mais alto (Y menor) ganha, depois mais a esquerda (X menor)
         candidates.sort((a, b) => a.y === b.y ? a.x - b.x : a.y - b.y);
 
         // Testar posicionamento
         for (let p of candidates) {
-            if (bestPos && p.y > bestPos.y) break; // Otimização
+            if (bestPos && p.y > bestPos.y) break;
 
-            // Teste A: Normal
+            // Teste 1: Orientação Normal
             if (!checkOverlap(p.x, p.y, item.w, item.h)) {
                 if (p.y < minY || (p.y === minY && p.x < minX)) {
                     minY = p.y;
@@ -169,10 +157,9 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                 }
             }
 
-            // Teste B: Rotacionado (Se largura e altura diferem)
+            // Teste 2: Rotacionado
             if (item.w !== item.h) {
                 if (!checkOverlap(p.x, p.y, item.h, item.w)) {
-                    // Se girar for igual ou melhor, usa.
                     if (p.y < minY || (p.y === minY && p.x < minX)) {
                         minY = p.y;
                         minX = p.x;
@@ -181,16 +168,14 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
                 }
             }
             
-            // Se achou no topo absoluto (0), é o melhor lugar possível, para.
-            if (bestPos && bestPos.y === 0) break;
+            if (bestPos && bestPos.y === 0) break; 
         }
 
-        // Fallback: Se não achou lugar (muito raro), põe no finalzão da fila, na esquerda
         if (!bestPos) {
             const lastY = placedRects.length > 0 
                 ? Math.max(...placedRects.map(r => r.y + r.height)) + ITEM_GAP_CM 
                 : 0;
-            bestPos = { x: MIN_X, y: lastY, rotated: false };
+            bestPos = { x: PAPER_MARGIN_CM, y: lastY, rotated: false };
         }
 
         placedRects.push({
@@ -207,7 +192,7 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
     // 4. Calcular métricas finais
     const maxY = placedRects.reduce((max, r) => Math.max(max, r.y + r.height), 0);
     const finalMeters = maxY / 100;
-    const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; // Margem minúscula de 5cm só pra corte final
+    const safeMeters = Math.ceil((finalMeters + 0.05) * 100) / 100; 
 
     // 5. Aplicar Tabela
     let currentPrice = 60; 
@@ -255,20 +240,25 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
 
                 <div className="space-y-3">
                     {items.map((item) => (
-                        <div key={item.id} className="flex flex-col md:flex-row gap-2 items-end bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
-                            <div className="flex items-center gap-2 w-full md:flex-1">
+                        // CORREÇÃO: Layout em Grade Vertical para não quebrar
+                        <div key={item.id} className="flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
+                            
+                            {/* Linha 1: Cor + Descrição + Botão Excluir */}
+                            <div className="flex items-center gap-2 w-full">
                                 <div className="w-3 h-3 rounded-full shrink-0" style={{backgroundColor: item.color}}></div>
                                 <div className="flex-1">
                                     <InputGroup label="Descrição" name="d" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} />
                                 </div>
-                            </div>
-                            <div className="flex gap-2 w-full md:w-auto">
-                                <div className="w-28"><InputGroup label="Larg" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" /></div>
-                                <div className="w-28"><InputGroup label="Alt" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" /></div>
-                                <div className="w-28"><InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" /></div>
-                                <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 pb-2 pl-1">
+                                <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 pt-3">
                                     <Trash2 className="w-5 h-5" />
                                 </button>
+                            </div>
+
+                            {/* Linha 2: Medidas em Grid de 3 Colunas (Nunca vaza) */}
+                            <div className="grid grid-cols-3 gap-3 w-full">
+                                <InputGroup label="Larg (cm)" name="w" value={item.width} onChange={(e) => updateItem(item.id, 'width', parseFloat(e.target.value))} type="number" />
+                                <InputGroup label="Alt (cm)" name="h" value={item.height} onChange={(e) => updateItem(item.id, 'height', parseFloat(e.target.value))} type="number" />
+                                <InputGroup label="Qtd" name="q" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} type="number" step="1" />
                             </div>
                         </div>
                     ))}
