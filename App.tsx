@@ -5,6 +5,7 @@ import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
 import { SettingsView } from './views/Settings';
+import { DTFCalculator } from './views/DTFCalculator'; // Importação Nova
 import { CalculationMode } from './types';
 import type { SettingsData } from './types';
 import { INITIAL_SETTINGS } from './constants/defaults';
@@ -17,6 +18,7 @@ export const App: React.FC = () => {
         switch (mode) {
             case CalculationMode.CALCULATOR: return <PricingCalculator settings={settings} />;
             case CalculationMode.COMPARATOR: return <Comparator settings={settings} />;
+            case CalculationMode.DTF: return <DTFCalculator settings={settings} />; // Rota Nova
             case CalculationMode.REVERSE: return <ReverseEngineering settings={settings} />;
             case CalculationMode.SETTINGS: return <SettingsView settings={settings} updateSettings={setSettings} />;
             case CalculationMode.DASHBOARD:

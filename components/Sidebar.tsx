@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Calculator, Scale, Target, Settings } from 'lucide-react';
+import { LayoutDashboard, Calculator, Scale, Target, Settings, Printer } from 'lucide-react';
 import { CalculationMode } from '../types';
 
 interface SidebarProps {
@@ -11,6 +11,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode }) => {
     const menuItems = [
         { mode: CalculationMode.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
         { mode: CalculationMode.CALCULATOR, icon: Calculator, label: 'Precificação' },
+        { mode: CalculationMode.DTF, icon: Printer, label: 'Calc. DTF' }, // Item Novo
         { mode: CalculationMode.COMPARATOR, icon: Scale, label: 'Comparador' },
         { mode: CalculationMode.REVERSE, icon: Target, label: 'Eng. Reversa' },
         { mode: CalculationMode.SETTINGS, icon: Settings, label: 'Configurações' },
@@ -56,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode }) => {
 
             <div className="p-6 hidden lg:block">
                 <div className="text-[10px] text-sow-grey/40 font-montserrat text-center border-t border-sow-border pt-4">
-                    Sow Price System v6.0
+                    Sow Price System v6.1
                 </div>
             </div>
         </aside>

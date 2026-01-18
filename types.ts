@@ -3,10 +3,14 @@ export enum CalculationMode {
   CALCULATOR = 'CALCULATOR',
   COMPARATOR = 'COMPARATOR',
   REVERSE = 'REVERSE',
+  DTF = 'DTF', // <--- NOVO
   SETTINGS = 'SETTINGS',
 }
 
-// Interfaces do Banco de Preços (Database)
+// ... mantenha o resto das interfaces iguais ...
+// (Não precisa apagar o resto, apenas adicione o 'DTF' no enum acima)
+// Se quiser copiar o arquivo todo para garantir, segue abaixo:
+
 export interface SilkPriceTable {
   small: { firstColor: number; extraColor: number; screenNew: number; screenRemake: number };
   large: { firstColor: number; extraColor: number; screenNew: number; screenRemake: number };
@@ -33,7 +37,6 @@ export interface SettingsData {
   serviceCosts: ServicesCosts;
 }
 
-// Interfaces do Produto (Inputs)
 export interface Embellishment {
   id: string;
   type: 'SILK' | 'BORDADO' | 'DTF';
