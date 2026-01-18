@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, Box, RefreshCw, Shirt, AlertTriangle, Download, Users, Building2 } from 'lucide-react';
+import { Printer, Plus, Trash2, Box, RefreshCw, Shirt, AlertTriangle, Download, Users, Building2, CheckCircle2 } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { formatCurrency } from '../utils/pricingEngine';
 import html2canvas from 'html2canvas'; 
@@ -7,7 +7,7 @@ import type { SettingsData, DTFResultData } from '../types';
 
 interface DTFCalculatorProps {
   settings: SettingsData;
-  onCalculationChange?: (data: DTFResultData) => void; // Link com a Precificação
+  onCalculationChange?: (data: DTFResultData) => void; // Adicionado para integração
 }
 
 // --- ESTRUTURAS DE DADOS ---
@@ -132,6 +132,22 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     }
   };
 
+  // --- NOVO: FUNÇÃO PARA APLICAR PREÇO NO ORÇAMENTO ---
+  const handleExportToPricing = () => {
+    if (onCalculationChange) {
+        onCalculationChange({
+            totalMeters,
+            printCost,
+            appCost,
+            totalCost: printCost + appCost,
+            totalItems: totalApplications,
+            priceTier,
+            isOutsourced: appType === 'outsourced'
+        });
+        alert(`Valores aplicados com sucesso!\nTotal adicionado: ${formatCurrency(printCost + appCost)}`);
+    }
+  };
+
   // --- CRUD ---
   const addShirtGroup = () => {
     const nextColor = GROUP_COLORS[shirtGroups.length % GROUP_COLORS.length];
@@ -192,14 +208,12 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     setTotalApplications(totalApps);
 
     // Cálculo do Custo de Aplicação
-    let calculatedAppCost = 0;
     if (appType === 'internal') {
-        calculatedAppCost = 0;
+        setAppCost(0);
     } else {
         const unitCost = totalApps > 100 ? 1.50 : 2.00;
-        calculatedAppCost = totalApps * unitCost;
+        setAppCost(totalApps * unitCost);
     }
-    setAppCost(calculatedAppCost);
 
     // 2. Ordenação Híbrida Inteligente
     items.sort((a, b) => {
@@ -308,28 +322,13 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
     let price = 60; let tier = 'Tabela Base (até 10m)';
     if (safeMeters > 20) { price = 45; tier = 'Atacado Super (> 20m)'; }
     else if (safeMeters > 10) { price = 50; tier = 'Atacado (> 10m)'; }
-    
-    const calculatedPrintCost = safeMeters * price;
 
     setLayout(placed);
     setTotalMeters(safeMeters);
     setAppliedPricePerMeter(price);
     setPriceTier(tier);
-    setPrintCost(calculatedPrintCost);
+    setPrintCost(safeMeters * price);
     setHasErrors(errorFound);
-
-    // --- INTEGRAÇÃO: ENVIAR DADOS ---
-    if (onCalculationChange) {
-        onCalculationChange({
-            totalMeters: safeMeters,
-            printCost: calculatedPrintCost,
-            appCost: calculatedAppCost,
-            totalCost: calculatedPrintCost + calculatedAppCost,
-            totalItems: totalApps,
-            priceTier: tier,
-            isOutsourced: appType === 'outsourced'
-        });
-    }
 
   }, [shirtGroups, appType]); // Recalcula se mudar camisas ou tipo de aplicação
 
@@ -434,6 +433,14 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings, onCalcul
                     <span>{totalMeters.toFixed(2)}m utilizados</span>
                     <span>{priceTier}</span>
                 </div>
+
+                {/* BOTÃO DE ENVIO MANUAL */}
+                <button 
+                    onClick={handleExportToPricing} 
+                    className="w-full mt-3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
+                >
+                    <CheckCircle2 className="w-4 h-4" /> Aplicar no Orçamento
+                </button>
             </div>
         </div>
 

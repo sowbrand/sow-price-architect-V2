@@ -44,7 +44,7 @@ export interface Embellishment {
   embroideryStitchCount?: number; 
   embroideryCostPerThousand?: number;
   dtfMetersUsed?: number; 
-  calculatedUnitCost?: number; // Custo unitário vindo do otimizador
+  calculatedUnitCost?: number;
 }
 
 export interface ProductInput {
@@ -88,7 +88,6 @@ export interface CalculationResult {
   warnings: string[];
 }
 
-// --- INTERFACE DE DADOS DO DTF ---
 export interface DTFResultData {
   totalMeters: number;
   printCost: number;
