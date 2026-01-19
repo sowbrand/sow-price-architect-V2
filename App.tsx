@@ -4,7 +4,8 @@ import { Dashboard } from './views/Dashboard';
 import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
-import { Settings } from './views/Settings'; // LINHA 7 CORRIGIDA (Usa chaves {})
+import { DTFCalculator } from './views/DTFCalculator'; // Importe o DTF
+import { Settings } from './views/Settings';
 import { CalculationMode, SettingsData } from './types';
 
 // Configurações Padrão (Memória Inicial)
@@ -45,28 +46,40 @@ const App: React.FC = () => {
       {/* ÁREA PRINCIPAL */}
       <main className="flex-1 overflow-hidden relative">
         
-        {/* ESTRATÉGIA DE PERSISTÊNCIA:
-           Todos os componentes são renderizados, mas usamos a classe 'hidden'
-           para ocultar visualmente os inativos. Isso preserva o estado (inputs)
-           enquanto o usuário navega entre as abas.
-        */}
-
+        {/* DASHBOARD (Landing Page) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.DASHBOARD ? 'block' : 'hidden'}`}>
-          <Dashboard settings={settings} />
+          <Dashboard 
+            settings={settings} 
+            onNavigate={setCurrentMode} // Conecta os botões do Dashboard
+          />
         </div>
 
+        {/* PRECIFICAÇÃO */}
         <div className={`h-full w-full ${currentMode === CalculationMode.CALCULATOR ? 'block' : 'hidden'}`}>
           <PricingCalculator settings={settings} />
         </div>
 
+        {/* CALCULADORA DTF (Standalone) */}
+        <div className={`h-full w-full ${currentMode === CalculationMode.DTF ? 'block' : 'hidden'}`}>
+          {/* Adicionando padding para ficar bonito como uma tela cheia */}
+          <div className="h-full p-6 bg-gray-50">
+             <div className="bg-white h-full rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <DTFCalculator settings={settings} />
+             </div>
+          </div>
+        </div>
+
+        {/* COMPARADOR */}
         <div className={`h-full w-full ${currentMode === CalculationMode.COMPARATOR ? 'block' : 'hidden'}`}>
           <Comparator settings={settings} />
         </div>
 
+        {/* ENGENHARIA REVERSA */}
         <div className={`h-full w-full ${currentMode === CalculationMode.REVERSE ? 'block' : 'hidden'}`}>
           <ReverseEngineering settings={settings} />
         </div>
 
+        {/* CONFIGURAÇÕES */}
         <div className={`h-full w-full ${currentMode === CalculationMode.SETTINGS ? 'block' : 'hidden'}`}>
           <Settings 
             data={settings} 
