@@ -1,101 +1,122 @@
-import React, { useState } from 'react';
-import { Settings, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, AlertCircle } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import type { SettingsData } from '../types';
 
-interface SettingsViewProps {
-  settings: SettingsData;
-  updateSettings: (newSettings: SettingsData) => void;
+interface SettingsProps {
+  data: SettingsData;
+  onSave: (newSettings: SettingsData) => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ settings, updateSettings }) => {
-    const [activeTab, setActiveTab] = useState<'GLOBAL' | 'DB'>('GLOBAL');
+// PADRONIZAÇÃO: export const (Exportação Nomeada)
+export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
+  const [formData, setFormData] = useState<SettingsData>(data);
+  const [hasChanges, setHasChanges] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type } = e.target;
-        updateSettings({ ...settings, [name]: type === 'number' ? parseFloat(value) || 0 : value });
-    };
+  useEffect(() => {
+    setFormData(data);
+    setHasChanges(false);
+  }, [data]);
 
-    const handleServiceChange = (field: keyof typeof settings.serviceCosts, value: number) => {
-        updateSettings({ ...settings, serviceCosts: { ...settings.serviceCosts, [field]: value } });
-    };
+  const handleChange = (section: keyof SettingsData, field: string | null, value: any) => {
+    setFormData(prev => {
+      if (field && typeof prev[section] === 'object') {
+        return {
+          ...prev,
+          [section]: {
+            ...prev[section] as any,
+            [field]: value
+          }
+        };
+      }
+      return { ...prev, [section]: value };
+    });
+    setHasChanges(true);
+  };
 
-    const handleSilkChange = (size: 'small' | 'large', field: string, value: number) => {
-        updateSettings({
-            ...settings,
-            silkPrices: {
-                ...settings.silkPrices,
-                [size]: { ...settings.silkPrices[size], [field]: value }
-            }
-        });
-    };
+  const handleSave = () => {
+    onSave(formData);
+    setHasChanges(false);
+  };
 
-    // CORREÇÃO DE CONTRASTE: Botão inativo agora tem borda cinza e texto cinza escuro
-    const getTabClass = (isActive: boolean) => 
-        `px-6 py-3 rounded-lg font-montserrat font-bold text-sm transition-all border ${
-            isActive 
-            ? 'bg-sow-green text-white border-sow-green shadow-md' 
-            : 'bg-white text-sow-grey border-gray-300 hover:bg-gray-50' // Borda mais visível
-        }`;
-
-    const getRegimeClass = (isActive: boolean) => 
-        `flex-1 p-3 text-sm font-montserrat font-bold rounded-lg border transition-all ${
-            isActive 
-            ? 'bg-sow-black text-white border-sow-black shadow-md' 
-            : 'bg-white text-sow-grey border-gray-300 hover:bg-gray-50'
-        }`;
-
-    return (
-        <div className="max-w-5xl mx-auto h-full overflow-y-auto pr-2 font-sans pb-24 scrollbar-thin">
-            <div className="flex items-center gap-4 mb-8 border-b border-sow-border pb-6">
-                <div className="p-3 bg-white border border-sow-border rounded-xl shadow-soft"><Settings className="w-6 h-6 text-sow-green" /></div>
-                <div><h2 className="text-2xl font-helvetica font-bold text-sow-black">Configurações</h2><p className="text-sow-grey text-sm mt-1 font-montserrat">Gerencie custos fixos e tabelas de preços de fornecedores.</p></div>
-            </div>
-
-            <div className="flex gap-4 mb-8">
-                <button onClick={() => setActiveTab('GLOBAL')} className={getTabClass(activeTab === 'GLOBAL')}>Global & Impostos</button>
-                <button onClick={() => setActiveTab('DB')} className={`${getTabClass(activeTab === 'DB')} flex items-center gap-2`}><Database className="w-4 h-4"/> Banco de Preços (2026)</button>
-            </div>
-
-            {activeTab === 'GLOBAL' ? (
-                <div className="space-y-8 animate-fade-in">
-                    <div className="bg-white rounded-xl p-8 border border-sow-border shadow-soft">
-                        <h3 className="text-lg font-helvetica font-bold text-sow-black mb-6 border-l-4 border-sow-green pl-3">Custos Fixos da Empresa</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <InputGroup label="Custo Fixo Mensal Total" name="monthlyFixedCosts" value={settings.monthlyFixedCosts} onChange={handleChange} type="number" prefix="R$" step="100" />
-                            <InputGroup label="Produção Estimada (peças/mês)" name="estimatedMonthlyProduction" value={settings.estimatedMonthlyProduction} onChange={handleChange} type="number" step="100" suffix="pçs" />
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-xl p-8 border border-sow-border shadow-soft">
-                        <h3 className="text-lg font-helvetica font-bold text-sow-black mb-6 border-l-4 border-red-400 pl-3">Impostos & Taxas</h3>
-                         <div className="flex gap-4 mb-6">
-                            <button onClick={() => updateSettings({...settings, taxRegime: 'SIMPLES'})} className={getRegimeClass(settings.taxRegime === 'SIMPLES')}>Simples Nacional</button>
-                            <button onClick={() => updateSettings({...settings, taxRegime: 'MEI'})} className={getRegimeClass(settings.taxRegime === 'MEI')}>MEI</button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className={settings.taxRegime === 'MEI' ? 'opacity-50 pointer-events-none' : ''}><InputGroup label="Imposto Venda (%)" name="defaultTaxRate" value={settings.defaultTaxRate} onChange={handleChange} type="number" suffix="%" /></div>
-                            <InputGroup label="Taxa Cartão" name="defaultCardRate" value={settings.defaultCardRate} onChange={handleChange} type="number" suffix="%" />
-                            <InputGroup label="Marketing" name="defaultMarketingRate" value={settings.defaultMarketingRate} onChange={handleChange} type="number" suffix="%" />
-                            <InputGroup label="Comissão" name="defaultCommissionRate" value={settings.defaultCommissionRate} onChange={handleChange} type="number" suffix="%" />
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-8 animate-fade-in">
-                    <div className="bg-white rounded-xl p-8 border border-sow-border shadow-soft">
-                        <h3 className="text-lg font-helvetica font-bold text-sow-black mb-6 border-l-4 border-indigo-500 pl-3">Corte, Costura & DTF</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                            <InputGroup label="Corte Manual (Un)" name="c_man" value={settings.serviceCosts.cuttingManual} onChange={(e) => handleServiceChange('cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
-                            <InputGroup label="Corte Plotter (Un)" name="c_plot" value={settings.serviceCosts.cuttingPlotter} onChange={(e) => handleServiceChange('cuttingPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
-                            <InputGroup label="Papel Risco (Metro)" name="p_pap" value={settings.serviceCosts.plotterPaper} onChange={(e) => handleServiceChange('plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
-                            <InputGroup label="Costura Padrão" name="sew" value={settings.serviceCosts.sewingStandard} onChange={(e) => handleServiceChange('sewingStandard', parseFloat(e.target.value))} type="number" prefix="R$" />
-                            <InputGroup label="DTF (Impressão/m)" name="dtf_p" value={settings.serviceCosts.dtfPrintMeter} onChange={(e) => handleServiceChange('dtfPrintMeter', parseFloat(e.target.value))} type="number" prefix="R$" />
-                            <InputGroup label="DTF (Aplicação/un)" name="dtf_a" value={settings.serviceCosts.dtfApplication} onChange={(e) => handleServiceChange('dtfApplication', parseFloat(e.target.value))} type="number" prefix="R$" />
-                        </div>
-                    </div>
-                    {/* (Restante do código igual...) */}
-                </div>
-            )}
+  return (
+    <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-helvetica font-bold text-sow-black">Configurações Globais</h2>
+          <p className="text-sm text-sow-grey">Defina os parâmetros base para todos os cálculos.</p>
         </div>
-    );
+        <button 
+          onClick={handleSave} 
+          disabled={!hasChanges}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+            hasChanges 
+              ? 'bg-sow-green text-white shadow-lg hover:shadow-xl hover:scale-105' 
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          <Save className="w-5 h-5" /> Salvar Alterações
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+        {/* Custos Fixos */}
+        <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
+          <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Estrutura da Empresa</h3>
+          <div className="space-y-4">
+            <InputGroup label="Custos Fixos Mensais" name="fixed" value={formData.monthlyFixedCosts} onChange={(e) => handleChange('monthlyFixedCosts', null, parseFloat(e.target.value))} type="number" prefix="R$" />
+            <InputGroup label="Capacidade Produtiva (Peças/Mês)" name="prod" value={formData.estimatedMonthlyProduction} onChange={(e) => handleChange('estimatedMonthlyProduction', null, parseFloat(e.target.value))} type="number" />
+          </div>
+        </div>
+
+        {/* Impostos e Taxas */}
+        <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
+          <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Financeiro & Comercial</h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Regime Tributário</label>
+                 <select 
+                    value={formData.taxRegime}
+                    onChange={(e) => handleChange('taxRegime', null, e.target.value)}
+                    className="w-full p-2 border rounded-lg font-bold text-gray-700 bg-gray-50"
+                 >
+                   <option value="SIMPLES">Simples Nacional</option>
+                   <option value="MEI">MEI</option>
+                 </select>
+               </div>
+               <InputGroup label="Imposto Médio (%)" name="tax" value={formData.defaultTaxRate} onChange={(e) => handleChange('defaultTaxRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+               <InputGroup label="Taxa Cartão" name="card" value={formData.defaultCardRate} onChange={(e) => handleChange('defaultCardRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
+               <InputGroup label="Marketing" name="mkt" value={formData.defaultMarketingRate} onChange={(e) => handleChange('defaultMarketingRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
+               <InputGroup label="Comissão" name="com" value={formData.defaultCommissionRate} onChange={(e) => handleChange('defaultCommissionRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
+            </div>
+          </div>
+        </div>
+
+        {/* Custos de Serviço (Corte, Costura, DTF) */}
+        <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft lg:col-span-2">
+          <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Custos de Serviços (Mão de Obra e Insumos)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="space-y-3">
+                <span className="text-xs font-bold text-purple-600 block">Corte & Risco</span>
+                <InputGroup label="Corte Manual (Un)" name="cutM" value={formData.serviceCosts.cuttingManual} onChange={(e) => handleChange('serviceCosts', 'cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <InputGroup label="Corte Plotter (Un)" name="cutP" value={formData.serviceCosts.cuttingPlotter} onChange={(e) => handleChange('serviceCosts', 'cuttingPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <InputGroup label="Papel Plotter (Metro)" name="pap" value={formData.serviceCosts.plotterPaper} onChange={(e) => handleChange('serviceCosts', 'plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
+             </div>
+             <div className="space-y-3">
+                <span className="text-xs font-bold text-purple-600 block">DTF (Interno)</span>
+                <InputGroup label="Custo Impressão (Metro)" name="dtfP" value={formData.serviceCosts.dtfPrintMeter} onChange={(e) => handleChange('serviceCosts', 'dtfPrintMeter', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <InputGroup label="Custo Aplicação (Un)" name="dtfA" value={formData.serviceCosts.dtfApplication} onChange={(e) => handleChange('serviceCosts', 'dtfApplication', parseFloat(e.target.value))} type="number" prefix="R$" />
+             </div>
+             <div className="space-y-3">
+                <span className="text-xs font-bold text-purple-600 block">Confecção</span>
+                <InputGroup label="Costura Padrão (Un)" name="sew" value={formData.serviceCosts.sewingStandard} onChange={(e) => handleChange('serviceCosts', 'sewingStandard', parseFloat(e.target.value))} type="number" prefix="R$" />
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };

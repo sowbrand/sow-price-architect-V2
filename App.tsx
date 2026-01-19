@@ -4,10 +4,10 @@ import { Dashboard } from './views/Dashboard';
 import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
-import { Settings } from './views/Settings';
+import { Settings } from './views/Settings'; // LINHA 7 CORRIGIDA (Usa chaves {})
 import { CalculationMode, SettingsData } from './types';
 
-// Configurações Padrão Iniciais (Caso não tenha vindo do banco)
+// Configurações Padrão (Memória Inicial)
 const DEFAULT_SETTINGS: SettingsData = {
   monthlyFixedCosts: 15000,
   estimatedMonthlyProduction: 1000,
@@ -26,52 +26,47 @@ const DEFAULT_SETTINGS: SettingsData = {
     plotterPaper: 4.50,
     sewingStandard: 5.00,
     dtfPrintMeter: 60.00,
-    dtfApplication: 4.00 // Padrão manual
+    dtfApplication: 4.00 
   }
 };
 
-function App() {
+const App: React.FC = () => {
   // Estado da Navegação
   const [currentMode, setCurrentMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
   
-  // Estado das Configurações (Compartilhado entre todas as abas)
+  // Estado das Configurações (Compartilhado)
   const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-montserrat">
-      {/* SIDEBAR (Navegação) */}
+      {/* SIDEBAR */}
       <Sidebar currentMode={currentMode} onNavigate={setCurrentMode} />
 
-      {/* ÁREA DE CONTEÚDO PRINCIPAL */}
+      {/* ÁREA PRINCIPAL */}
       <main className="flex-1 overflow-hidden relative">
         
         {/* ESTRATÉGIA DE PERSISTÊNCIA:
-           Renderizamos TODOS os componentes, mas usamos a classe 'hidden' 
-           nos que não estão ativos. Isso mantém os dados vivos na memória
-           enquanto você troca de aba.
+           Todos os componentes são renderizados, mas usamos a classe 'hidden'
+           para ocultar visualmente os inativos. Isso preserva o estado (inputs)
+           enquanto o usuário navega entre as abas.
         */}
 
-        {/* 1. DASHBOARD */}
         <div className={`h-full w-full ${currentMode === CalculationMode.DASHBOARD ? 'block' : 'hidden'}`}>
           <Dashboard settings={settings} />
         </div>
 
-        {/* 2. PRECIFICAÇÃO (Sua calculadora principal + DTF) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.CALCULATOR ? 'block' : 'hidden'}`}>
           <PricingCalculator settings={settings} />
         </div>
 
-        {/* 3. COMPARADOR DE ESTRATÉGIAS */}
         <div className={`h-full w-full ${currentMode === CalculationMode.COMPARATOR ? 'block' : 'hidden'}`}>
           <Comparator settings={settings} />
         </div>
 
-        {/* 4. ENGENHARIA REVERSA */}
         <div className={`h-full w-full ${currentMode === CalculationMode.REVERSE ? 'block' : 'hidden'}`}>
           <ReverseEngineering settings={settings} />
         </div>
 
-        {/* 5. CONFIGURAÇÕES (Settings) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.SETTINGS ? 'block' : 'hidden'}`}>
           <Settings 
             data={settings} 
