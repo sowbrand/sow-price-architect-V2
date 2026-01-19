@@ -4,11 +4,11 @@ import { Dashboard } from './views/Dashboard';
 import { PricingCalculator } from './views/PricingCalculator';
 import { Comparator } from './views/Comparator';
 import { ReverseEngineering } from './views/ReverseEngineering';
-import { DTFCalculator } from './views/DTFCalculator'; // Importe o DTF
+import { DTFCalculator } from './views/DTFCalculator'; 
 import { Settings } from './views/Settings';
 import { CalculationMode, SettingsData } from './types';
 
-// Configurações Padrão (Memória Inicial)
+// Configurações Padrão
 const DEFAULT_SETTINGS: SettingsData = {
   monthlyFixedCosts: 15000,
   estimatedMonthlyProduction: 1000,
@@ -32,60 +32,56 @@ const DEFAULT_SETTINGS: SettingsData = {
 };
 
 const App: React.FC = () => {
-  // Estado da Navegação
   const [currentMode, setCurrentMode] = useState<CalculationMode>(CalculationMode.DASHBOARD);
-  
-  // Estado das Configurações (Compartilhado)
   const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-montserrat">
-      {/* SIDEBAR */}
-      <Sidebar currentMode={currentMode} onNavigate={setCurrentMode} />
+      
+      {/* CORREÇÃO: Sidebar só aparece se NÃO for Dashboard */}
+      {currentMode !== CalculationMode.DASHBOARD && (
+        <Sidebar currentMode={currentMode} onNavigate={setCurrentMode} />
+      )}
 
       {/* ÁREA PRINCIPAL */}
       <main className="flex-1 overflow-hidden relative">
         
-        {/* DASHBOARD (Landing Page) */}
+        {/* PERSISTÊNCIA DE ABAS (Hidden) */}
+
         <div className={`h-full w-full ${currentMode === CalculationMode.DASHBOARD ? 'block' : 'hidden'}`}>
           <Dashboard 
             settings={settings} 
-            onNavigate={setCurrentMode} // Conecta os botões do Dashboard
+            onNavigate={setCurrentMode} 
           />
         </div>
 
-        {/* PRECIFICAÇÃO */}
         <div className={`h-full w-full ${currentMode === CalculationMode.CALCULATOR ? 'block' : 'hidden'}`}>
           <PricingCalculator settings={settings} />
         </div>
 
-        {/* CALCULADORA DTF (Standalone) */}
+        {/* Módulo DTF Isolado (Tela Cheia) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.DTF ? 'block' : 'hidden'}`}>
-          {/* Adicionando padding para ficar bonito como uma tela cheia */}
-          <div className="h-full p-6 bg-gray-50">
+           <div className="h-full p-6 bg-gray-50">
              <div className="bg-white h-full rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
                 <DTFCalculator settings={settings} />
              </div>
           </div>
         </div>
 
-        {/* COMPARADOR */}
         <div className={`h-full w-full ${currentMode === CalculationMode.COMPARATOR ? 'block' : 'hidden'}`}>
           <Comparator settings={settings} />
         </div>
 
-        {/* ENGENHARIA REVERSA */}
         <div className={`h-full w-full ${currentMode === CalculationMode.REVERSE ? 'block' : 'hidden'}`}>
           <ReverseEngineering settings={settings} />
         </div>
 
-        {/* CONFIGURAÇÕES */}
         <div className={`h-full w-full ${currentMode === CalculationMode.SETTINGS ? 'block' : 'hidden'}`}>
           <Settings 
             data={settings} 
             onSave={(newSettings) => {
               setSettings(newSettings);
-              alert('Configurações salvas e aplicadas em todas as abas!');
+              alert('Configurações salvas!');
             }} 
           />
         </div>
