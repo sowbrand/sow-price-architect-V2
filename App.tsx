@@ -38,7 +38,7 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-montserrat">
       
-      {/* CORREÇÃO: Sidebar só aparece se NÃO for Dashboard */}
+      {/* SIDEBAR: Só aparece se NÃO estiver no Dashboard */}
       {currentMode !== CalculationMode.DASHBOARD && (
         <Sidebar currentMode={currentMode} onNavigate={setCurrentMode} />
       )}
@@ -46,8 +46,7 @@ const App: React.FC = () => {
       {/* ÁREA PRINCIPAL */}
       <main className="flex-1 overflow-hidden relative">
         
-        {/* PERSISTÊNCIA DE ABAS (Hidden) */}
-
+        {/* DASHBOARD (Menu Principal) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.DASHBOARD ? 'block' : 'hidden'}`}>
           <Dashboard 
             settings={settings} 
@@ -55,11 +54,12 @@ const App: React.FC = () => {
           />
         </div>
 
+        {/* MÓDULOS DE SISTEMA */}
+        
         <div className={`h-full w-full ${currentMode === CalculationMode.CALCULATOR ? 'block' : 'hidden'}`}>
           <PricingCalculator settings={settings} />
         </div>
 
-        {/* Módulo DTF Isolado (Tela Cheia) */}
         <div className={`h-full w-full ${currentMode === CalculationMode.DTF ? 'block' : 'hidden'}`}>
            <div className="h-full p-6 bg-gray-50">
              <div className="bg-white h-full rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
