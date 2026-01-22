@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, CheckCircle, X } from 'lucide-react'; // Ícones adicionados
 import { InputGroup } from '../components/InputGroup';
 import type { SettingsData } from '../types';
 
@@ -9,9 +9,48 @@ interface SettingsProps {
   onSave: (newSettings: SettingsData) => void;
 }
 
+// --- NOVO COMPONENTE: MODAL DE SUCESSO (ESTILO SOWBRAND) ---
+const SuccessModal = ({ onClose }: { onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm transition-all">
+    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center w-[400px] relative animate-bounce-in">
+      
+      {/* Botão Fechar (X) */}
+      <button 
+        onClick={onClose}
+        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Ícone de Sucesso Animado */}
+      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-5 ring-4 ring-green-100">
+        <CheckCircle className="w-10 h-10 text-sow-green" />
+      </div>
+
+      {/* Textos */}
+      <h3 className="text-xl font-helvetica font-bold text-sow-black mb-2">Sucesso!</h3>
+      <p className="text-sm text-sow-grey text-center mb-8 px-4">
+        As configurações globais do sistema foram atualizadas e salvas com segurança.
+      </p>
+
+      {/* Botão de Confirmação */}
+      <button
+        onClick={onClose}
+        className="w-full py-3.5 bg-sow-green text-white rounded-xl font-bold font-montserrat shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200"
+      >
+        OK, Entendi
+      </button>
+    </div>
+  </div>
+);
+
+// --- COMPONENTE PRINCIPAL ---
 export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
   const [formData, setFormData] = useState<SettingsData>(data);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Estado para controlar a visibilidade do Modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     setFormData(data);
@@ -42,11 +81,16 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
   const handleSave = () => {
     onSave(formData);
     setHasChanges(false);
+    // Em vez de alert(), agora mostramos o modal
+    setShowSuccessModal(true);
   };
 
   return (
-    <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
+    <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin relative">
       
+      {/* Renderização Condicional do Modal */}
+      {showSuccessModal && <SuccessModal onClose={() => setShowSuccessModal(false)} />}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-helvetica font-bold text-sow-black">Configurações Globais</h2>
