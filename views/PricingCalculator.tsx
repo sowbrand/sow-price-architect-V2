@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -49,9 +48,9 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
-    // CORREÇÃO CRÍTICA: LIMPEZA PROFUNDA DOS DADOS ANTES DE CALCULAR
+    // SINCRONIZA O CUSTO MANUAL DO DTF COM O OBJETO DE INPUT
     useEffect(() => {
-        // Cria uma cópia profunda dos embellishments para não mutar o estado original
+        // Cópia profunda para evitar problemas de referência
         const calculatedInput = { 
             ...input, 
             embellishments: input.embellishments.map(e => ({...e})) 
@@ -63,15 +62,11 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
-             // FORÇA A LIMPEZA: Sobrescreve o objeto DTF garantindo que não tenha lixo
+             // AQUI ESTÁ A CORREÇÃO: USAMOS UMA VARIÁVEL EXCLUSIVA 'dtfManualUnitCost'
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
-                 printSetupCost: unitCost, 
-                 printPassCost: 0,
-                 dtfMetersUsed: 0,
-                 // Garante que campos de Silk sejam ignorados se existirem
-                 printColors: 0,
-                 isRegraving: false
+                 dtfManualUnitCost: unitCost, 
+                 dtfMetersUsed: 0 
              };
         }
         
@@ -103,17 +98,13 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 
                 const newItem = { ...item, [field]: value };
 
-                // LIMPEZA IMEDIATA AO TROCAR O TIPO
+                // LOGICA DE RESET AO TROCAR TIPO
                 if (field === 'type') {
                     if (value === 'DTF') {
-                        // ZERA TUDO O QUE FOR DE SILK
+                        // Limpa campos visuais, mas o calculo é garantido pelo dtfManualUnitCost
                         newItem.printSetupCost = 0; 
-                        newItem.printPassCost = 0;
-                        newItem.printColors = 0;
-                        newItem.isRegraving = false;
                     } else if (value === 'SILK') {
-                        newItem.printSetupCost = 0; // Será recalculado pelo silkSize/cores
-                        newItem.printColors = 1;
+                        newItem.dtfManualUnitCost = 0;
                     }
                 }
 

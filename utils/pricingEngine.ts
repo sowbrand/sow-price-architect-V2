@@ -26,7 +26,7 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         cuttingLaborUnit = settings.serviceCosts.cuttingManualPlotter;
     }
 
-    // 3. Beneficiamento (LÓGICA DTF AJUSTADA)
+    // 3. Beneficiamento
     let processingUnit = 0;
     input.embellishments.forEach((item, index) => {
         let itemCost = 0;
@@ -46,17 +46,18 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         } else if (item.type === 'BORDADO') {
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
-            // REGRA: SE Quantidade > Limite (100) -> Atacado. SENÃO -> Varejo.
-            // Nota: Se a quantidade for IGUAL ao limite (100), ainda é Varejo (<= 100).
+            // LÓGICA DTF (AGORA TOTALMENTE ISOLADA)
+            
+            // Regra de Varejo/Atacado
             const applicationCost = input.batchSize > settings.serviceCosts.dtfWholesaleLimit 
                 ? settings.serviceCosts.dtfAppWholesale 
                 : settings.serviceCosts.dtfAppRetail;
 
-            if (item.printSetupCost && item.printSetupCost > 0) {
-                // Se existe valor manual injetado (via Otimizador ou Manual)
-                itemCost = item.printSetupCost + applicationCost;
+            // Verifica SE existe custo manual NOVO (dtfManualUnitCost)
+            if (item.dtfManualUnitCost && item.dtfManualUnitCost > 0) {
+                itemCost = item.dtfManualUnitCost + applicationCost;
             } else {
-                // Se não tem impressão definida, cobra só a aplicação
+                // Se não tem manual, calcula por metro (modo legado/fallback)
                 const meters = item.dtfMetersUsed || 0;
                 const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
                 itemCost = printUnit + applicationCost;

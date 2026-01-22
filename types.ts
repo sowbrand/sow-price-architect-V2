@@ -19,10 +19,10 @@ export interface ServicesCosts {
   sewingStandard: number;  
   dtfPrintMeter: number;   
   
-  // NOVOS CAMPOS: REGRA DE PREÇO DINÂMICO DTF
-  dtfAppRetail: number;    // Preço Varejo (ex: R$ 2,00)
-  dtfAppWholesale: number; // Preço Atacado (ex: R$ 1,50)
-  dtfWholesaleLimit: number; // Limite de peças (ex: 100)
+  // REGRA DTF
+  dtfAppRetail: number;    // Varejo (ex: 2.00)
+  dtfAppWholesale: number; // Atacado (ex: 1.50)
+  dtfWholesaleLimit: number; // Limite (ex: 100)
 }
 
 export interface SettingsData {
@@ -42,13 +42,20 @@ export interface Embellishment {
   id: string;
   type: 'SILK' | 'BORDADO' | 'DTF';
   silkSize?: 'SMALL' | 'LARGE' | 'CUSTOM'; 
-  printSetupCost?: number;
+  
+  // Campos SILK
+  printSetupCost?: number; // Custo Tela
   printColors?: number;
   printPassCost?: number;
   isRegraving?: boolean; 
+  
+  // Campos BORDADO
   embroideryStitchCount?: number; 
   embroideryCostPerThousand?: number;
+  
+  // Campos DTF (NOVO CAMPO DE CUSTO MANUAL PARA EVITAR CONFLITO)
   dtfMetersUsed?: number; 
+  dtfManualUnitCost?: number; // Custo de impressão manual unitário
   printUnitCost?: number;
 }
 

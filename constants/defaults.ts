@@ -22,9 +22,9 @@ export const DEFAULT_SERVICE_COSTS = {
   sewingStandard: 4.75,    
   dtfPrintMeter: 60.00,
   
-  // NOVOS VALORES PADRÃO (ETAPA 4)
-  dtfAppRetail: 2.00,      // Preço até 100 peças
-  dtfAppWholesale: 1.50,   // Preço a partir de 101 peças
+  // REGRA DE PREÇO DTF
+  dtfAppRetail: 2.00,      // Até 100 peças
+  dtfAppWholesale: 1.50,   // Acima de 100 peças
   dtfWholesaleLimit: 100   // Limite
 };
 
