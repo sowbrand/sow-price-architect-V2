@@ -8,13 +8,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => {
-  // ORDEM REORGANIZADA CONFORME SOLICITADO:
-  // 1. Dashboard
-  // 2. Calc. DTF
-  // 3. Precificação
-  // 4. Comparador
-  // 5. Eng. Reversa
-  // 6. Configurações
+  // Definição dos itens do menu
   const menuItems = [
     { id: CalculationMode.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { id: CalculationMode.DTF, label: 'Calc. DTF', icon: Printer },
@@ -27,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full shrink-0 z-20">
       <div className="p-6 flex items-center justify-center">
-         {/* Espaço reservado para logo compacta se necessário, ou apenas espaçamento */}
+         {/* Espaço para logo se necessário */}
       </div>
 
       <nav className="flex-1 px-4 space-y-2">
@@ -48,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => 
             />
             <span>{item.label}</span>
             
-            {/* Indicador de Ativo (Bolinha Verde) */}
+            {/* Indicador de Ativo */}
             {currentMode === item.id && (
               <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sow-green" />
             )}

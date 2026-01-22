@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info, PieChart as PieIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { InputGroup } from '../components/InputGroup';
 import { PriceCard } from '../components/PriceCard';
@@ -16,15 +15,22 @@ interface PricingCalculatorProps {
 export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }) => {
     const [input, setInput] = useState<ProductInput>(INITIAL_PRODUCT);
     const [result, setResult] = useState<CalculationResult | null>(null);
+    
+    // --- ESTADOS PARA INPUT MANUAL DO DTF ---
     const [dtfPrintManual, setDtfPrintManual] = useState(0);
     const [dtfAppManual, setDtfAppManual] = useState(0);
+
+    // --- ESTADO PARA ALERTAR MUDANÇA NAS CONFIGURAÇÕES ---
     const [settingsChangedAlert, setSettingsChangedAlert] = useState(false);
+    
+    // Ref para guardar as configurações anteriores e comparar
     const prevSettingsRef = useRef<SettingsData>(settings);
 
     // 1. MONITOR DE MUDANÇAS GLOBAIS
     useEffect(() => {
         const prevSettings = prevSettingsRef.current;
         let hasChanges = false;
+
         if (
             prevSettings.defaultTaxRate !== settings.defaultTaxRate ||
             prevSettings.defaultCardRate !== settings.defaultCardRate ||
@@ -35,17 +41,20 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         ) {
             hasChanges = true;
         }
+
         if (settings.serviceCosts.sewingStandard !== prevSettings.serviceCosts.sewingStandard) {
             if (input.sewingCost === prevSettings.serviceCosts.sewingStandard) {
                 setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
                 hasChanges = true;
             }
         }
+
         if (hasChanges) {
             setSettingsChangedAlert(true);
             const timer = setTimeout(() => setSettingsChangedAlert(false), 10000);
             return () => clearTimeout(timer);
         }
+
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
@@ -62,12 +71,10 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
-             // GRAVA NA VARIÁVEL EXCLUSIVA E LIMPA SILK
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  dtfManualUnitCost: unitCost, 
                  dtfMetersUsed: 0,
-                 // Garante que campos de Silk sejam ignorados/zerados no cálculo
                  printColors: 0,
                  isRegraving: false,
                  printSetupCost: 0
@@ -88,7 +95,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
     const addEmbellishment = () => {
       const newId = Math.random().toString(36).substr(2, 9);
-      // CORREÇÃO CRÍTICA: silkSize 'SMALL' (não CUSTOM) ativa o cálculo automático
       setInput(prev => ({ ...prev, embellishments: [...prev.embellishments, { id: newId, type: 'SILK', silkSize: 'SMALL', printColors: 1 }] }));
     };
 
@@ -101,37 +107,30 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
                 
-                // 1. Tratamento de Inteiros (Cores e Milheiros)
                 let cleanValue = value;
                 if (field === 'printColors' || field === 'embroideryStitchCount') {
                     cleanValue = typeof value === 'string' ? parseInt(value) || 0 : Math.floor(value as number);
-                    if (cleanValue < 1 && field === 'printColors') cleanValue = 1;
+                    if (field === 'printColors' && cleanValue < 1) cleanValue = 1;
                 }
 
                 const newItem = { ...item, [field]: cleanValue };
 
-                // 2. Lógica de Reset ao Trocar Tipo
                 if (field === 'type') {
                     if (value === 'DTF') {
-                        // Limpa dados de Silk
                         newItem.printSetupCost = 0; 
                         newItem.printPassCost = 0;
                         newItem.printColors = 0;
                     } else if (value === 'SILK') {
-                        // Reseta para padrão Silk
                         newItem.dtfManualUnitCost = 0;
                         newItem.printColors = 1;
-                        newItem.silkSize = 'SMALL'; // Garante cálculo automático
+                        newItem.silkSize = 'SMALL';
                     }
                 }
 
-                // 3. Recálculo Automático do Preço Silk
                 if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM') {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
-                    
                     const colors = newItem.printColors || 1;
                     const extraColors = Math.max(0, colors - 1);
-                    
                     newItem.printSetupCost = newItem.isRegraving ? table.screenRemake : table.screenNew;
                     newItem.printPassCost = table.firstColor + (extraColors * table.extraColor);
                 }
@@ -159,7 +158,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       XLSX.writeFile(wb, `SowPrice_${productName}.xlsx`);
     };
 
-    const chartData = result ? [
+    // Dados preparados para a visualização de Barras
+    const compositionData = result ? [
       { name: 'Matéria-Prima', value: result.materialUnit, color: '#f59e0b' },
       { name: 'Corte/Risco', value: result.plotterUnit + result.cuttingLaborUnit, color: '#6366f1' },
       { name: 'Beneficiamento', value: result.processingUnit, color: '#ec4899' },
@@ -169,6 +169,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       { name: 'Despesas Com.', value: result.commercialExpensesUnit, color: '#ef4444' },
       { name: 'Lucro Líquido', value: result.netProfitUnit, color: '#72bf03' },
     ] : [];
+
+    const totalComposition = result ? result.suggestedSalePrice : 1;
 
     const PRODUCT_CATEGORIES = ['Camiseta Oversized', 'Camiseta Streetwear', 'Camiseta Casual', 'Camiseta Slim', 'Camiseta Feminina', 'Outro'];
     const getSelectionButtonClass = (isActive: boolean) => `flex-1 py-2.5 text-xs font-montserrat font-bold rounded-lg border transition-all duration-200 ${isActive ? 'bg-sow-black text-white border-sow-black shadow-md' : 'bg-white text-sow-grey border-sow-border hover:bg-gray-50'}`;
@@ -343,18 +345,40 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
-                <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col">
-                    <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-6 tracking-wider">Composição do Preço</h3>
-                    <div className="w-full h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
-                                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                                </Pie>
-                                <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: '#fff', borderColor: '#E5E5E5', color: '#000', borderRadius: '8px', fontFamily: 'Montserrat', fontWeight: 500 }} />
-                                <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', fontFamily: 'Montserrat', paddingTop: '16px' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                
+                <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col h-[400px]">
+                    <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-3">
+                        <PieIcon className="w-4 h-4 text-sow-green" />
+                        <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey tracking-wider">Composição do Preço</h3>
+                    </div>
+                    
+                    <div className="flex-1 flex flex-col justify-center overflow-y-auto pr-2 scrollbar-thin">
+                        {compositionData.length > 0 ? (
+                            compositionData.map((item, index) => {
+                                const percent = totalComposition > 0 ? (item.value / totalComposition) * 100 : 0;
+                                return (
+                                    <div key={index} className="mb-4 last:mb-0">
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase">{item.name}</span>
+                                            <div className="text-right">
+                                                <span className="text-xs font-bold text-sow-black block">{formatCurrency(item.value)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full rounded-full transition-all duration-500" 
+                                                style={{ width: `${percent}%`, backgroundColor: item.color }}
+                                            />
+                                        </div>
+                                        <div className="text-right mt-0.5">
+                                            <span className="text-[9px] font-bold text-gray-400">{percent.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <p className="text-center text-gray-400 text-sm">Sem dados para exibir.</p>
+                        )}
                     </div>
                 </div>
 
