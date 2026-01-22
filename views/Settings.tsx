@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, AlertCircle } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import type { SettingsData } from '../types';
 
@@ -8,7 +8,6 @@ interface SettingsProps {
   onSave: (newSettings: SettingsData) => void;
 }
 
-// PADRONIZAÇÃO: export const (Exportação Nomeada)
 export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
   const [formData, setFormData] = useState<SettingsData>(data);
   const [hasChanges, setHasChanges] = useState(false);
@@ -69,7 +68,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           </div>
         </div>
 
-        {/* Impostos e Taxas */}
+        {/* Impostos e Taxas (AQUI ESTÁ A CORREÇÃO DO MEI) */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Financeiro & Comercial</h3>
           <div className="space-y-4">
@@ -79,10 +78,10 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
                  <select 
                     value={formData.taxRegime}
                     onChange={(e) => handleChange('taxRegime', null, e.target.value)}
-                    className="w-full p-2 border rounded-lg font-bold text-gray-700 bg-gray-50"
+                    className="w-full h-[42px] px-3 border border-gray-300 rounded-lg font-bold text-gray-700 bg-white focus:outline-none focus:border-green-500 transition-colors text-sm"
                  >
                    <option value="SIMPLES">Simples Nacional</option>
-                   <option value="MEI">MEI</option>
+                   <option value="MEI">MEI (Microempreendedor)</option>
                  </select>
                </div>
                <InputGroup label="Imposto Médio (%)" name="tax" value={formData.defaultTaxRate} onChange={(e) => handleChange('defaultTaxRate', null, parseFloat(e.target.value))} type="number" suffix="%" />

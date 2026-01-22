@@ -24,6 +24,7 @@ export interface ServicesCosts {
 export interface SettingsData {
   monthlyFixedCosts: number;
   estimatedMonthlyProduction: number;
+  // GARANTINDO QUE ACEITA MEI
   taxRegime: 'SIMPLES' | 'MEI';
   defaultTaxRate: number;
   defaultCardRate: number;
