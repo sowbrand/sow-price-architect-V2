@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Calculator, Printer, Scale, Target, Settings } from 'lucide-react';
+import { LayoutDashboard, Calculator, Printer, Scale, Target, Settings } from 'lucide-react';
 import { CalculationMode } from '../types';
 
 interface SidebarProps {
@@ -8,55 +8,58 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => {
-  
+  // ORDEM REORGANIZADA CONFORME SOLICITADO:
+  // 1. Dashboard
+  // 2. Calc. DTF
+  // 3. Precificação
+  // 4. Comparador
+  // 5. Eng. Reversa
+  // 6. Configurações
   const menuItems = [
-    { label: 'Dashboard', icon: LayoutGrid, mode: CalculationMode.DASHBOARD },
-    { label: 'Precificação', icon: Calculator, mode: CalculationMode.CALCULATOR },
-    { label: 'Calc. DTF', icon: Printer, mode: CalculationMode.DTF },
-    { label: 'Comparador', icon: Scale, mode: CalculationMode.COMPARATOR },
-    { label: 'Eng. Reversa', icon: Target, mode: CalculationMode.REVERSE },
-    { label: 'Configurações', icon: Settings, mode: CalculationMode.SETTINGS },
+    { id: CalculationMode.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+    { id: CalculationMode.DTF, label: 'Calc. DTF', icon: Printer },
+    { id: CalculationMode.CALCULATOR, label: 'Precificação', icon: Calculator },
+    { id: CalculationMode.COMPARATOR, label: 'Comparador', icon: Scale },
+    { id: CalculationMode.REVERSE, label: 'Eng. Reversa', icon: Target },
+    { id: CalculationMode.SETTINGS, label: 'Configurações', icon: Settings },
   ];
 
   return (
-    // ADICIONADO 'relative' para o z-50 funcionar corretamente
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full shrink-0 font-montserrat z-50 relative">
-      
-      {/* LOGO */}
-      <div className="p-8 cursor-pointer" onClick={() => onNavigate(CalculationMode.DASHBOARD)}>
-        <h1 className="text-2xl font-helvetica font-bold text-gray-900">
-          sow<span className="font-light">brand</span>
-        </h1>
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full shrink-0 z-20">
+      <div className="p-6 flex items-center justify-center">
+         {/* Espaço reservado para logo compacta se necessário, ou apenas espaçamento */}
       </div>
 
-      {/* NAVEGAÇÃO */}
       <nav className="flex-1 px-4 space-y-2">
         {menuItems.map((item) => (
           <button
-            key={item.label}
-            type="button" // IMPORTANTE: Garante o comportamento de clique
-            onClick={() => onNavigate(item.mode)}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-xl transition-all duration-200 text-left outline-none
-              ${currentMode === item.mode 
-                ? 'bg-gray-50 text-gray-900 border border-gray-200 shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-              }
-            `}
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-montserrat font-bold text-sm ${
+              currentMode === item.id
+                ? 'bg-gray-50 text-sow-black border border-gray-200 shadow-sm'
+                : 'text-gray-400 hover:bg-gray-50 hover:text-sow-grey'
+            }`}
           >
-            <item.icon className={`w-5 h-5 ${currentMode === item.mode ? 'text-green-600' : 'text-gray-400'}`} />
+            <item.icon
+              className={`w-5 h-5 transition-colors ${
+                currentMode === item.id ? 'text-sow-green' : 'text-gray-400 group-hover:text-sow-grey'
+              }`}
+            />
             <span>{item.label}</span>
             
-            {/* Indicador Ativo (Bolinha Verde) */}
-            {currentMode === item.mode && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm"></div>
+            {/* Indicador de Ativo (Bolinha Verde) */}
+            {currentMode === item.id && (
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sow-green" />
             )}
           </button>
         ))}
       </nav>
 
-      {/* RODAPÉ */}
-      <div className="p-6 mt-auto">
-        <span className="text-[10px] text-gray-300 block text-center">Sow Price System v6.1</span>
+      <div className="p-4 border-t border-gray-100">
+        <p className="text-[10px] text-center text-gray-300 font-montserrat">
+          Sowbrand Intelligence v2.1
+        </p>
       </div>
     </aside>
   );
