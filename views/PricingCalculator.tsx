@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -63,11 +62,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
+             // GRAVA NA VARIÁVEL EXCLUSIVA E LIMPA SILK
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  dtfManualUnitCost: unitCost, 
                  dtfMetersUsed: 0,
-                 // Garante limpeza de campos de Silk
+                 // Garante que campos de Silk sejam ignorados/zerados no cálculo
                  printColors: 0,
                  isRegraving: false,
                  printSetupCost: 0
@@ -88,20 +88,20 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
     const addEmbellishment = () => {
       const newId = Math.random().toString(36).substr(2, 9);
-      setInput(prev => ({ ...prev, embellishments: [...prev.embellishments, { id: newId, type: 'SILK', silkSize: 'CUSTOM' }] }));
+      // CORREÇÃO CRÍTICA: silkSize 'SMALL' (não CUSTOM) ativa o cálculo automático
+      setInput(prev => ({ ...prev, embellishments: [...prev.embellishments, { id: newId, type: 'SILK', silkSize: 'SMALL', printColors: 1 }] }));
     };
 
     const removeEmbellishment = (id: string) => {
       setInput(prev => ({ ...prev, embellishments: prev.embellishments.filter(i => i.id !== id) }));
     };
 
-    // CORREÇÃO: LÓGICA DE ATUALIZAÇÃO DO SILK E INTEIROS
     const updateEmbellishment = (id: string, field: keyof Embellishment, value: string | number | boolean) => {
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
                 
-                // Força Inteiro para Cores e Milheiros
+                // 1. Tratamento de Inteiros (Cores e Milheiros)
                 let cleanValue = value;
                 if (field === 'printColors' || field === 'embroideryStitchCount') {
                     cleanValue = typeof value === 'string' ? parseInt(value) || 0 : Math.floor(value as number);
@@ -110,23 +110,25 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
                 const newItem = { ...item, [field]: cleanValue };
 
-                // LOGICA DE RESET E RECÁLCULO
+                // 2. Lógica de Reset ao Trocar Tipo
                 if (field === 'type') {
                     if (value === 'DTF') {
+                        // Limpa dados de Silk
                         newItem.printSetupCost = 0; 
                         newItem.printPassCost = 0;
                         newItem.printColors = 0;
                     } else if (value === 'SILK') {
+                        // Reseta para padrão Silk
                         newItem.dtfManualUnitCost = 0;
-                        newItem.printColors = 1; // Reseta para 1 cor ao voltar para Silk
+                        newItem.printColors = 1;
+                        newItem.silkSize = 'SMALL'; // Garante cálculo automático
                     }
                 }
 
-                // RECÁLCULO IMEDIATO DO PREÇO DO SILK SE MUDAR: TIPO, TAMANHO, CORES OU REGRAVAÇÃO
+                // 3. Recálculo Automático do Preço Silk
                 if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM') {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
                     
-                    // Garante que pegamos o valor atualizado de cores, seja do state antigo ou do novo input
                     const colors = newItem.printColors || 1;
                     const extraColors = Math.max(0, colors - 1);
                     
@@ -265,13 +267,11 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                           ) : (
                               item.type === 'SILK' ? (
                                   <div className="grid grid-cols-2 gap-3">
-                                      {/* CORREÇÃO: step=1 para inteiros */}
                                       <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', e.target.value)} type="number" step="1" />
                                       <div className="flex items-center pt-5"><label className="flex gap-2 text-xs font-bold text-sow-grey"><input type="checkbox" checked={item.isRegraving || false} onChange={(e) => updateEmbellishment(item.id, 'isRegraving', e.target.checked)} /> Regravação?</label></div>
                                   </div>
                               ) : (
                                   <div className="grid grid-cols-2 gap-3">
-                                      {/* CORREÇÃO: step=1 para inteiros */}
                                       <InputGroup label="Milheiros" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', e.target.value)} type="number" step="1" />
                                       <InputGroup label="Valor/Mil" name={`emb_cost_${item.id}`} value={item.embroideryCostPerThousand || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryCostPerThousand', parseFloat(e.target.value))} type="number" prefix="R$" />
                                   </div>

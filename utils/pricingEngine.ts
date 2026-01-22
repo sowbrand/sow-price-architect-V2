@@ -31,20 +31,33 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     input.embellishments.forEach((item, index) => {
         let itemCost = 0;
         if (item.type === 'SILK') {
-            const screens = item.printSetupCost || 0;
-            const colors = item.printColors || 0;
-            const pass = item.printPassCost || 0;
+            // CORREÇÃO SILK: Recálculo dinâmico baseado nas configurações para garantir atualização
+            // Define qual tabela usar (Pequena ou Grande)
+            const table = item.silkSize === 'LARGE' ? settings.silkPrices.large : settings.silkPrices.small;
             
-            const totalSetup = screens * colors;
+            // Garante número inteiro e mínimo de 1 cor
+            const colors = Math.max(1, Math.floor(item.printColors || 1));
+            const extraColors = Math.max(0, colors - 1);
+
+            // 1. Custo de Matrizes (Telas)
+            // Se for regravação usa preço menor, senão preço cheio. Multiplica pelo nº de cores.
+            const screenUnitCost = item.isRegraving ? table.screenRemake : table.screenNew;
+            const totalSetup = screenUnitCost * colors;
             const setupPerUnit = totalSetup / safeBatchSize;
-            const productionPerUnit = pass;
+
+            // 2. Custo de Produção (Passadas/Tinta)
+            // Fórmula: Preço 1ª Cor + (Preço Cor Extra * Quantidade de Extras)
+            const productionPerUnit = table.firstColor + (extraColors * table.extraColor);
+
             itemCost = setupPerUnit + productionPerUnit;
 
             if (input.batchSize < 50 && totalSetup > 0) {
                 warnings.push(`⚠️ TÉCNICA #${index + 1} (SILK): Lote pequeno encarece a tela.`);
             }
         } else if (item.type === 'BORDADO') {
-            itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
+            // Garante inteiros para milheiros
+            const stitches = Math.floor(item.embroideryStitchCount || 0);
+            itemCost = stitches * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
             // Lógica DTF Ajustada: Custo Zero se campos estiverem vazios
             
@@ -54,15 +67,9 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
 
             // Se existe custo manual definido (mesmo que 0, se o campo foi usado)
             if (item.dtfManualUnitCost !== undefined) {
-                // Se o custo manual é 0, entendemos que o usuário limpou o campo ou ainda não preencheu.
-                // Nesse caso, só cobramos a aplicação se houver alguma indicação de custo > 0.
-                // Se o usuário colocou R$ 0,00, o custo total é R$ 0,00.
-                // Se o usuário colocou R$ 1,00, o custo total é R$ 1,00 (assumindo que ele já somou tudo lá, OU o sistema soma a aplicação?)
-                // NOTA: O código do React soma Impressão + Aplicação e joga em dtfManualUnitCost.
-                // Logo, dtfManualUnitCost JÁ CONTÉM a aplicação se o usuário preencheu o campo de aplicação.
-                // Se ambos são 0, dtfManualUnitCost é 0.
-                
-                itemCost = item.dtfManualUnitCost; 
+                // Se o custo manual for maior que zero, ele já inclui a aplicação (somada no frontend)
+                // Se for 0, entendemos que o usuário limpou o campo, então não cobramos nada.
+                itemCost = item.dtfManualUnitCost > 0 ? item.dtfManualUnitCost : 0; 
             } else {
                 // Modo legado (Metragem)
                 const meters = item.dtfMetersUsed || 0;
