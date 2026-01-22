@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { TrendingUp, CheckCircle2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { INITIAL_PRODUCT } from '../constants/defaults';
@@ -18,7 +18,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   const [resultA, setResultA] = useState<CalculationResult | null>(null);
   const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
-  // --- MEMÓRIA DE DADOS (Persistência ao trocar botões) ---
+  // --- MEMÓRIA DE DADOS ---
   // Cenário A
   const [memSilkColorsA, setMemSilkColorsA] = useState(1);
   const [memDtfCostA, setMemDtfCostA] = useState(0);
@@ -50,7 +50,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
       return input.embellishments[0].type;
   };
 
-  // Função INTELIGENTE para trocar estampa mantendo os dados salvos (Memória)
+  // Função INTELIGENTE para trocar estampa
   const handleEmbellishmentChange = (
     scenario: 'A' | 'B',
     type: 'NONE' | 'SILK' | 'DTF'
@@ -69,14 +69,14 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             id: `comp_silk_${scenario}`, 
             type: 'SILK', 
             silkSize: 'SMALL', 
-            printColors: savedColors, // Usa valor da memória (ex: 2 cores)
+            printColors: savedColors, 
             isRegraving: false 
         });
       } else if (type === 'DTF') {
         newEmbellishments.push({ 
             id: `comp_dtf_${scenario}`, 
             type: 'DTF', 
-            dtfManualUnitCost: savedDtfCost // Usa valor da memória (ex: R$ 12)
+            dtfManualUnitCost: savedDtfCost 
         });
       }
       
@@ -84,7 +84,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Função para atualizar valores e SALVAR NA MEMÓRIA IMEDIATAMENTE
+  // Atualizar valores e SALVAR NA MEMÓRIA
   const updateEmbellishmentValue = (
     scenario: 'A' | 'B',
     field: 'printColors' | 'dtfManualUnitCost',
@@ -92,7 +92,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   ) => {
     const setInput = scenario === 'A' ? setInputA : setInputB;
 
-    // 1. Atualiza a memória para não perder ao trocar de aba
     if (scenario === 'A') {
         if (field === 'printColors') setMemSilkColorsA(value);
         if (field === 'dtfManualUnitCost') setMemDtfCostA(value);
@@ -101,7 +100,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         if (field === 'dtfManualUnitCost') setMemDtfCostB(value);
     }
 
-    // 2. Atualiza o input atual para recálculo do preço
     setInput(prev => {
         const updated = [...prev.embellishments];
         if (updated.length > 0) {
@@ -111,7 +109,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Dados para o gráfico (Forçando Numbers para evitar erros)
+  // Dados para o gráfico
   const chartData = [
     { 
         name: 'Custo Prod.', 
@@ -153,7 +151,15 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-gray-600">CENÁRIO A (Base)</h3>
           </div>
           
-          <InputGroup label="Qtd. Lote" name="batchA" value={inputA.batchSize} onChange={(e) => handleChange(setInputA, 'batchSize', parseFloat(e.target.value))} type="number" />
+          {/* CORREÇÃO 1: parseInt para Qtd. Lote */}
+          <InputGroup 
+            label="Qtd. Lote" 
+            name="batchA" 
+            value={inputA.batchSize} 
+            onChange={(e) => handleChange(setInputA, 'batchSize', parseInt(e.target.value) || 0)} 
+            type="number" 
+            step="1" // Força setas de inteiro
+          />
           <InputGroup label="Preço Malha (R$/kg)" name="fabA" value={inputA.fabricPricePerKg} onChange={(e) => handleChange(setInputA, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
           <div className="pt-2 border-t border-gray-100">
@@ -174,7 +180,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
               ))}
             </div>
 
-            {/* Inputs com Memória A */}
+            {/* Inputs Dinâmicos A */}
             {getActiveType(inputA) === 'SILK' && (
                 <div className="bg-gray-50 p-2 rounded border border-gray-200 animate-fade-in">
                     <InputGroup label="Nº de Cores" name="colorsA" value={inputA.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('A', 'printColors', parseInt(e.target.value))} type="number" step="1" />
@@ -204,10 +210,15 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[350px]">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
                 
-                {/* GRÁFICO CORRIGIDO: Altura Fixa no Pai e Dados Numéricos */}
-                <div className="w-full h-[250px] relative">
+                {/* CORREÇÃO 2: Estilo explícito de altura e renderização condicional */}
+                <div style={{ width: '100%', height: '250px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} barGap={5} barSize={40} margin={{top: 20, right: 30, left: 20, bottom: 5}}>
+                        <BarChart 
+                            data={chartData} 
+                            barGap={5} 
+                            barSize={40} 
+                            margin={{top: 20, right: 30, left: 20, bottom: 5}}
+                        >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                             <XAxis 
                                 dataKey="name" 
@@ -226,8 +237,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                                 contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
                                 formatter={(val: number) => [formatCurrency(val), '']}
                             />
-                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} animationDuration={500} />
+                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} animationDuration={500} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -273,7 +284,15 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-sow-green">CENÁRIO B (Simulação)</h3>
           </div>
           
-          <InputGroup label="Qtd. Lote" name="batchB" value={inputB.batchSize} onChange={(e) => handleChange(setInputB, 'batchSize', parseFloat(e.target.value))} type="number" />
+          {/* CORREÇÃO 1: parseInt para Qtd. Lote */}
+          <InputGroup 
+            label="Qtd. Lote" 
+            name="batchB" 
+            value={inputB.batchSize} 
+            onChange={(e) => handleChange(setInputB, 'batchSize', parseInt(e.target.value) || 0)} 
+            type="number" 
+            step="1" 
+          />
           <InputGroup label="Preço Malha (R$/kg)" name="fabB" value={inputB.fabricPricePerKg} onChange={(e) => handleChange(setInputB, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
           <div className="pt-2 border-t border-gray-100">
@@ -294,7 +313,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
               ))}
             </div>
 
-            {/* Inputs com Memória B */}
+            {/* Inputs Dinâmicos B */}
             {getActiveType(inputB) === 'SILK' && (
                 <div className="bg-green-50 p-2 rounded border border-green-100 animate-fade-in">
                     <InputGroup label="Nº de Cores" name="colorsB" value={inputB.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('B', 'printColors', parseInt(e.target.value))} type="number" step="1" />
