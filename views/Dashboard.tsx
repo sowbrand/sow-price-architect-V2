@@ -1,90 +1,99 @@
 import React from 'react';
-import { Calculator, Scale, Printer, Target, Settings, ArrowRight } from 'lucide-react';
+import { Calculator, Printer, Scale, Target, Settings } from 'lucide-react';
 import { CalculationMode, SettingsData } from '../types';
 
 interface DashboardProps {
   settings: SettingsData;
-  onNavigate: (mode: CalculationMode) => void; // Nova propriedade para permitir navegação
+  onNavigate: (mode: CalculationMode) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ settings, onNavigate }) => {
-  
-  const cards = [
+  // Definição dos módulos na nova ordem solicitada
+  const modules = [
+    {
+      title: 'Calculadora DTF',
+      description: 'Otimize rolos de impressão e calcule custos.',
+      icon: Printer,
+      mode: CalculationMode.DTF,
+      color: 'bg-purple-100 text-purple-600',
+      hoverBorder: 'hover:border-purple-200'
+    },
     {
       title: 'Precificação',
       description: 'Calcule custos e defina preços de venda.',
       icon: Calculator,
-      color: 'bg-sow-green',
-      text: 'text-sow-green',
-      mode: CalculationMode.CALCULATOR
+      mode: CalculationMode.CALCULATOR,
+      color: 'bg-green-100 text-green-600',
+      hoverBorder: 'hover:border-green-200'
     },
     {
       title: 'Comparador',
       description: 'Compare cenários e proteja sua margem.',
       icon: Scale,
-      color: 'bg-pink-500',
-      text: 'text-pink-500',
-      mode: CalculationMode.COMPARATOR
-    },
-    {
-      title: 'Calculadora DTF',
-      description: 'Otimize rolos de impressão e calcule custos.',
-      icon: Printer,
-      color: 'bg-purple-500',
-      text: 'text-purple-500',
-      mode: CalculationMode.DTF
+      mode: CalculationMode.COMPARATOR,
+      color: 'bg-pink-100 text-pink-600',
+      hoverBorder: 'hover:border-pink-200'
     },
     {
       title: 'Eng. Reversa',
       description: 'Defina o preço alvo e descubra o custo teto.',
       icon: Target,
-      color: 'bg-indigo-500',
-      text: 'text-indigo-500',
-      mode: CalculationMode.REVERSE
+      mode: CalculationMode.REVERSE,
+      color: 'bg-blue-100 text-blue-600',
+      hoverBorder: 'hover:border-blue-200'
     },
     {
       title: 'Configurações',
       description: 'Gerencie taxas, custos fixos e fornecedores.',
       icon: Settings,
-      color: 'bg-gray-500',
-      text: 'text-gray-500',
-      mode: CalculationMode.SETTINGS
+      mode: CalculationMode.SETTINGS,
+      color: 'bg-gray-100 text-gray-600',
+      hoverBorder: 'hover:border-gray-300'
     }
   ];
 
   return (
-    <div className="h-full overflow-y-auto p-8 font-montserrat bg-gray-50">
-      <div className="mb-10">
+    <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-8">
+      
+      {/* Cabeçalho / Logo */}
+      <div className="mb-12">
         <h1 className="text-4xl font-helvetica font-bold text-sow-black mb-2">
           sow<span className="font-light">brand</span>
         </h1>
-        <p className="text-xs tracking-[0.2em] text-gray-400 uppercase">Pricing Intelligence System</p>
+        <p className="text-xs text-sow-grey uppercase tracking-[0.2em] font-medium pl-1">
+          Pricing Intelligence System
+        </p>
       </div>
 
+      {/* Grid de Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {cards.map((card, index) => (
-          <button
-            key={index}
-            onClick={() => onNavigate(card.mode)}
-            className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 text-left group flex flex-col h-64 relative overflow-hidden"
+        {modules.map((module) => (
+          <button 
+            key={module.title}
+            onClick={() => onNavigate(module.mode)}
+            className={`bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-left group flex flex-col h-[280px] ${module.hoverBorder}`}
           >
-            <div className={`w-12 h-12 rounded-xl ${card.color} bg-opacity-10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-              <card.icon className={`w-6 h-6 ${card.text}`} />
+            {/* Ícone */}
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${module.color} transition-transform group-hover:scale-110 shadow-inner`}>
+              <module.icon className="w-7 h-7" strokeWidth={1.5} />
             </div>
             
-            <h3 className="text-lg font-bold text-gray-800 mb-2">{card.title}</h3>
-            <p className="text-xs text-gray-500 leading-relaxed">{card.description}</p>
+            {/* Título */}
+            <h3 className="text-lg font-helvetica font-bold text-sow-black mb-3 group-hover:text-sow-green transition-colors">
+              {module.title}
+            </h3>
             
-            <div className="mt-auto pt-4 flex items-center text-xs font-bold text-gray-300 group-hover:text-sow-black transition-colors">
-              <span>Acessar Ferramenta</span>
-              <ArrowRight className="w-3 h-3 ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+            {/* Descrição */}
+            <p className="text-sm text-gray-500 mb-auto leading-relaxed font-medium">
+              {module.description}
+            </p>
+
+            {/* Link de Ação */}
+            <div className="mt-6 pt-6 border-t border-gray-50 flex items-center text-[11px] font-bold text-gray-300 group-hover:text-sow-green transition-colors uppercase tracking-wider">
+              Acessar Ferramenta
             </div>
           </button>
         ))}
-      </div>
-
-      <div className="fixed bottom-4 left-8 text-[10px] text-gray-300">
-        © 2026 SOW BRAND • V6.1.0
       </div>
     </div>
   );
