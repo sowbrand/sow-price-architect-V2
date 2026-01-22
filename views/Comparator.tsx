@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { INITIAL_PRODUCT } from '../constants/defaults';
@@ -44,7 +44,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     setInput(prev => {
       const newEmbellishments = [];
       if (type === 'SILK') {
-        // Inicia com 1 cor e permite edição
         newEmbellishments.push({ 
             id: 'comp_silk', 
             type: 'SILK', 
@@ -53,7 +52,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             isRegraving: false 
         });
       } else if (type === 'DTF') {
-        // Inicia com custo zero para edição
         newEmbellishments.push({ 
             id: 'comp_dtf', 
             type: 'DTF', 
@@ -138,7 +136,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                   key={t}
                   onClick={() => handleEmbellishmentChange(setInputA, t as any)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded border transition-all ${
-                    getActiveType(inputA) === (t === 'NONE' ? 'NONE' : t)
+                    getActiveType(inputA) === t
                     ? 'bg-gray-600 text-white border-gray-600 shadow-sm' 
                     : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
                   }`}
@@ -175,7 +173,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
         {/* === GRÁFICO CENTRAL & VEREDITO === */}
         <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[300px]">
+            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[350px]">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-4">Raio-X Comparativo</h3>
                 
                 {/* Correção do Gráfico: Altura definida e dados validados */}
@@ -240,14 +238,14 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
           <InputGroup label="Preço Malha (R$/kg)" name="fabB" value={inputB.fabricPricePerKg} onChange={(e) => handleChange(setInputB, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
           <div className="pt-2 border-t border-gray-100">
-            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo de Estampa</label>
+            <label className="text-[10px] font-bold text-sow-green uppercase block mb-1">Tipo de Estampa</label>
             <div className="flex gap-1 mb-3">
               {['NONE', 'SILK', 'DTF'].map((t) => (
                 <button
                   key={t}
                   onClick={() => handleEmbellishmentChange(setInputB, t as any)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded border transition-all ${
-                    getActiveType(inputB) === (t === 'NONE' ? 'NONE' : t)
+                    getActiveType(inputB) === t
                     ? 'bg-sow-green text-white border-sow-green shadow-md' 
                     : 'bg-white text-sow-grey border-sow-border hover:bg-green-50'
                   }`}
