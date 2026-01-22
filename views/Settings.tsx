@@ -130,7 +130,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
                 <InputGroup label="Papel Plotter (Metro)" name="pap" value={formData.serviceCosts.plotterPaper} onChange={(e) => handleChange('serviceCosts', 'plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
              </div>
              
-             {/* CONFIGURAÇÃO DINÂMICA DO DTF */}
+             {/* CAMPOS NOVOS PARA DTF */}
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">DTF</span>
                 <InputGroup label="Custo Impressão (Metro)" name="dtfP" value={formData.serviceCosts.dtfPrintMeter} onChange={(e) => handleChange('serviceCosts', 'dtfPrintMeter', parseFloat(e.target.value))} type="number" prefix="R$" />

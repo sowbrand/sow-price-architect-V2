@@ -49,12 +49,20 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
+    // CORREÇÃO NO USE EFFECT PARA EVITAR SHALLOW COPY E GARANTIR CALCULO LIMPO
     useEffect(() => {
-        const calculatedInput = { ...input };
+        // Cria uma cópia profunda dos embellishments para não mutar o estado original
+        const calculatedInput = { 
+            ...input, 
+            embellishments: input.embellishments.map(e => ({...e})) 
+        };
+        
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
+        
         if (dtfItemIndex >= 0) {
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
+             
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  printSetupCost: unitCost, 
@@ -83,12 +91,26 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       setInput(prev => ({ ...prev, embellishments: prev.embellishments.filter(i => i.id !== id) }));
     };
 
+    // FUNÇÃO CORRIGIDA: LIMPA O CUSTO DA TELA (R$ 35) QUANDO MUDA PARA DTF
     const updateEmbellishment = (id: string, field: keyof Embellishment, value: string | number | boolean) => {
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
                 const newItem = { ...item, [field]: value };
-                if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM' && (field === 'silkSize' || field === 'printColors' || field === 'isRegraving')) {
+
+                // SE MUDOU O TIPO, LIMPA OS DADOS DO TIPO ANTERIOR
+                if (field === 'type') {
+                    if (value === 'DTF') {
+                        newItem.printSetupCost = 0; // Zera o custo de tela do Silk
+                        newItem.printPassCost = 0;
+                        newItem.printColors = 0;
+                        newItem.isRegraving = false;
+                    } else if (value === 'SILK') {
+                        newItem.printSetupCost = 0; // Será recalculado abaixo
+                    }
+                }
+
+                if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM' && (field === 'type' || field === 'silkSize' || field === 'printColors' || field === 'isRegraving')) {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
                     const colors = newItem.printColors || 1;
                     const extraColors = Math.max(0, colors - 1);
@@ -136,6 +158,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
+        {/* COLUNA ESQUERDA: INPUTS */}
         <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
             
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">

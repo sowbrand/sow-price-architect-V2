@@ -20,9 +20,9 @@ export interface ServicesCosts {
   dtfPrintMeter: number;   
   
   // CAMPOS DE ESCALONAMENTO DTF
-  dtfAppRetail: number;    // Preço para baixas quantidades (ex: R$ 2,00)
-  dtfAppWholesale: number; // Preço para altas quantidades (ex: R$ 1,50)
-  dtfWholesaleLimit: number; // O número de corte (ex: 100 peças)
+  dtfAppRetail: number;    // Preço Varejo (ex: R$ 2,00)
+  dtfAppWholesale: number; // Preço Atacado (ex: R$ 1,50)
+  dtfWholesaleLimit: number; // Limite para virada (ex: 100)
 }
 
 export interface SettingsData {

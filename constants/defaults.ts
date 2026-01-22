@@ -22,10 +22,10 @@ export const DEFAULT_SERVICE_COSTS = {
   sewingStandard: 4.75,    
   dtfPrintMeter: 60.00,
   
-  // REGRA DE PREÇO DTF
-  dtfAppRetail: 2.00,      // Preço até 100 peças
-  dtfAppWholesale: 1.50,   // Preço a partir de 101 peças
-  dtfWholesaleLimit: 100   // Limite de corte
+  // REGRA DE PREÇO DTF (Corrigido para sua regra)
+  dtfAppRetail: 2.00,      // Até 100 peças
+  dtfAppWholesale: 1.50,   // A partir de 101 peças
+  dtfWholesaleLimit: 100   // Limite
 };
 
 export const INITIAL_SETTINGS: SettingsData = {
