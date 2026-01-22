@@ -99,29 +99,43 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // --- CONTROLE DE ESCALA DA VISUALIZAÇÃO (AJUSTADO PARA MAXIMIZAR LARGURA) ---
+  // --- CONTROLE DE ESCALA DA VISUALIZAÇÃO (CORRIGIDO COM RESIZEOBSERVER) ---
+  // Alterado para garantir que o papel ocupe a largura máxima ao trocar de aba
   useEffect(() => {
-    const handleResize = () => {
-        if (containerRef.current) {
-            // Calcula a escala baseada na largura da coluna direita
-            // Subtrai uma margem menor para aproveitar melhor o espaço (ex: 20px)
-            const paddingX = 20; 
-            const containerWidth = containerRef.current.clientWidth - paddingX; 
-            
-            // Calcula a escala para que a largura do rolo ocupe o espaço disponível
-            // Mantém um mínimo de 2px por cm para não ficar ilegível
-            const newScale = Math.max(containerWidth / ROLL_WIDTH_CM, 2); 
-            
-            setScale(newScale);
+    if (!containerRef.current) return;
+
+    const updateScale = () => {
+      if (containerRef.current) {
+        const availableWidth = containerRef.current.clientWidth;
+        
+        // Só calcula se a largura for válida (maior que 0)
+        if (availableWidth > 0) {
+           // Subtrai uma margem fixa pequena (40px) para garantir que caiba sem gerar scroll horizontal indesejado
+           // e compensar a barra de rolagem vertical e padding do container pai
+           const paddingX = 40; 
+           const targetWidth = availableWidth - paddingX;
+           
+           // Calcula a escala: Quantos pixels por CM são necessários para preencher a largura?
+           const newScale = targetWidth / ROLL_WIDTH_CM;
+           
+           // Garante um mínimo de 2px por cm para visualização, mas usa o newScale se for maior
+           setScale(Math.max(newScale, 2));
         }
+      }
     };
 
-    // Executa no inicio e no resize
-    handleResize();
-    // Pequeno delay para garantir que o layout esteja pronto
-    setTimeout(handleResize, 100);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // O ResizeObserver "vigia" o elemento. Assim que a aba deixa de ser 'hidden',
+    // ele dispara o updateScale e corrige o tamanho do papel instantaneamente.
+    const observer = new ResizeObserver(() => {
+      updateScale();
+    });
+
+    observer.observe(containerRef.current);
+
+    // Chama uma vez no início para garantir
+    updateScale();
+
+    return () => observer.disconnect();
   }, []);
 
   // --- FUNÇÃO DE DOWNLOAD DE IMAGEM (HTML2CANVAS) ---
