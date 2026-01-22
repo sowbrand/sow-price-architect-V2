@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: SettingsData = {
   estimatedMonthlyProduction: 1000,
   taxRegime: 'SIMPLES',
   defaultTaxRate: 4,
+  meiDasTax: 75.00, // Valor padrão atual do DAS MEI
   defaultCardRate: 3.5,
   defaultMarketingRate: 5,
   defaultCommissionRate: 0,

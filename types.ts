@@ -24,9 +24,10 @@ export interface ServicesCosts {
 export interface SettingsData {
   monthlyFixedCosts: number;
   estimatedMonthlyProduction: number;
-  // GARANTINDO QUE ACEITA MEI
+  // Regime Tributário
   taxRegime: 'SIMPLES' | 'MEI';
-  defaultTaxRate: number;
+  defaultTaxRate: number; // Porcentagem (%) para Simples Nacional
+  meiDasTax: number;      // Valor Fixo (R$) para MEI [NOVO CAMPO]
   defaultCardRate: number;
   defaultMarketingRate: number;
   defaultCommissionRate: number;

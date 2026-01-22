@@ -20,6 +20,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
 
   const handleChange = (section: keyof SettingsData, field: string | null, value: any) => {
     setFormData(prev => {
+      // Se mudou o campo ServiceCosts (objeto aninhado)
       if (field && typeof prev[section] === 'object') {
         return {
           ...prev,
@@ -29,6 +30,13 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           }
         };
       }
+      
+      // Lógica específica: Se mudar o regime para MEI, garantimos que o DAS tenha um valor
+      if (section === 'taxRegime' && value === 'MEI' && !prev.meiDasTax) {
+          return { ...prev, taxRegime: value, meiDasTax: 75.00 }; // Valor padrão sugerido
+      }
+
+      // Se mudou um campo direto (ex: monthlyFixedCosts ou taxRegime)
       return { ...prev, [section]: value };
     });
     setHasChanges(true);
@@ -89,8 +97,29 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
                    <option value="MEI">MEI (Microempreendedor)</option>
                  </select>
                </div>
-               <InputGroup label="Imposto Médio (%)" name="tax" value={formData.defaultTaxRate} onChange={(e) => handleChange('defaultTaxRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
+               
+               {/* LÓGICA DE EXIBIÇÃO CONDICIONAL */}
+               {formData.taxRegime === 'MEI' ? (
+                   <InputGroup 
+                      label="Taxa Mensal DAS" 
+                      name="meiDas" 
+                      value={formData.meiDasTax || 0} 
+                      onChange={(e) => handleChange('meiDasTax', null, parseFloat(e.target.value))} 
+                      type="number" 
+                      prefix="R$" 
+                   />
+               ) : (
+                   <InputGroup 
+                      label="Imposto Médio (%)" 
+                      name="tax" 
+                      value={formData.defaultTaxRate} 
+                      onChange={(e) => handleChange('defaultTaxRate', null, parseFloat(e.target.value))} 
+                      type="number" 
+                      suffix="%" 
+                   />
+               )}
             </div>
+            
             <div className="grid grid-cols-3 gap-4">
                <InputGroup label="Taxa Cartão" name="card" value={formData.defaultCardRate} onChange={(e) => handleChange('defaultCardRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
                <InputGroup label="Marketing" name="mkt" value={formData.defaultMarketingRate} onChange={(e) => handleChange('defaultMarketingRate', null, parseFloat(e.target.value))} type="number" suffix="%" />
