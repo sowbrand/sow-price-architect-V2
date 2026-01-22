@@ -18,7 +18,6 @@ export const DEFAULT_SILK_PRICES = {
 export const DEFAULT_SERVICE_COSTS = {
   cuttingManual: 0.70,        // Risco Manual
   cuttingManualPlotter: 0.55, // Risco Impresso
-  cuttingMachine: 0.80,       // Automático
   plotterPaper: 5.70,      
   sewingStandard: 4.75,    
   dtfPrintMeter: 60.00,    
@@ -46,13 +45,13 @@ export const INITIAL_PRODUCT: any = {
   fabricPricePerKg: 60.00, 
   piecesPerKg: 3.5,        
   lossPercentage: 10,
-  fabricWidth: 1.80, // Largura padrão da malha
+  fabricWidth: 1.80,
   
   // Ribana
   ribanaPricePerKg: 0.00, 
   ribanaYield: 0.00,
 
-  // Corte (Padrão: Manual com Plotter)
+  // Corte
   cuttingType: 'MANUAL_PLOTTER',
   plotterMetersTotal: 0,
   plotterFreight: 0,

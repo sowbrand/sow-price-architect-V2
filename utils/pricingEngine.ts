@@ -9,12 +9,12 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     const ribanaBase = input.ribanaYield > 0 ? input.ribanaPricePerKg / input.ribanaYield : 0;
     const materialUnit = (fabricBase + ribanaBase) * (1 + input.lossPercentage / 100);
 
-    // 2. Risco e Corte (Lógica Avançada)
+    // 2. Risco e Corte (Lógica Avançada - 2 OPÇÕES)
     let plotterUnit = 0;
     let cuttingLaborUnit = 0;
 
-    // Validação de Largura do Plotter
-    if ((input.cuttingType === 'MANUAL_PLOTTER' || input.cuttingType === 'MACHINE') && input.fabricWidth > 1.83) {
+    // Validação de Largura do Plotter (Apenas se usar plotter)
+    if (input.cuttingType === 'MANUAL_PLOTTER' && input.fabricWidth > 1.83) {
         warnings.push("⚠️ Largura da Malha excede o limite do Plotter (1.83m).");
     }
 
@@ -27,11 +27,6 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         const paperCost = input.plotterMetersTotal * settings.serviceCosts.plotterPaper;
         plotterUnit = (paperCost + input.plotterFreight) / safeBatchSize;
         cuttingLaborUnit = settings.serviceCosts.cuttingManualPlotter;
-    } else if (input.cuttingType === 'MACHINE') {
-        // Corte Automático (Audaces)
-        const paperCost = input.plotterMetersTotal * settings.serviceCosts.plotterPaper;
-        plotterUnit = (paperCost + input.plotterFreight) / safeBatchSize;
-        cuttingLaborUnit = settings.serviceCosts.cuttingMachine;
     }
 
     // 3. Beneficiamento

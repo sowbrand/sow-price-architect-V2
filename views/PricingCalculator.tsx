@@ -17,22 +17,14 @@ interface PricingCalculatorProps {
 export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }) => {
     const [input, setInput] = useState<ProductInput>(INITIAL_PRODUCT);
     const [result, setResult] = useState<CalculationResult | null>(null);
-    
-    // --- ESTADOS PARA INPUT MANUAL DO DTF ---
     const [dtfPrintManual, setDtfPrintManual] = useState(0);
     const [dtfAppManual, setDtfAppManual] = useState(0);
-
-    // --- ESTADO PARA ALERTAR MUDANÇA NAS CONFIGURAÇÕES ---
     const [settingsChangedAlert, setSettingsChangedAlert] = useState(false);
-    
-    // Ref para guardar as configurações anteriores e comparar
     const prevSettingsRef = useRef<SettingsData>(settings);
 
-    // 1. MONITOR DE MUDANÇAS GLOBAIS
     useEffect(() => {
         const prevSettings = prevSettingsRef.current;
         let hasChanges = false;
-
         if (
             prevSettings.defaultTaxRate !== settings.defaultTaxRate ||
             prevSettings.defaultCardRate !== settings.defaultCardRate ||
@@ -43,32 +35,26 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         ) {
             hasChanges = true;
         }
-
         if (settings.serviceCosts.sewingStandard !== prevSettings.serviceCosts.sewingStandard) {
             if (input.sewingCost === prevSettings.serviceCosts.sewingStandard) {
                 setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
                 hasChanges = true;
             }
         }
-
         if (hasChanges) {
             setSettingsChangedAlert(true);
             const timer = setTimeout(() => setSettingsChangedAlert(false), 10000);
             return () => clearTimeout(timer);
         }
-
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
-    // 2. CÁLCULO E ATUALIZAÇÃO DO CENÁRIO
     useEffect(() => {
         const calculatedInput = { ...input };
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
-        
         if (dtfItemIndex >= 0) {
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
-             
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  printSetupCost: unitCost, 
@@ -76,7 +62,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                  dtfMetersUsed: 0 
              };
         }
-        
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfPrintManual, dtfAppManual]);
 
@@ -151,10 +136,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
-        {/* COLUNA ESQUERDA: INPUTS */}
         <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
             
-            {/* 1. DEFINIÇÃO DO PRODUTO */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                 <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
                 <div className="space-y-3">
@@ -167,7 +150,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 </div>
             </div>
 
-            {/* 2. MATÉRIA-PRIMA & CORTE (AQUI ESTÃO AS MUDANÇAS DA ETAPA 3) */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Package className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">1. Matéria-Prima & Corte</h3></div>
               <div className="grid grid-cols-2 gap-3">
@@ -177,23 +159,20 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                   <InputGroup label="Preço Ribana" name="ribanaPricePerKg" value={input.ribanaPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
                   <InputGroup label="Rend. Ribana" name="ribanaYield" value={input.ribanaYield} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
 
-                  {/* NOVO CAMPO: LARGURA DA MALHA */}
                   <InputGroup label="Larg. Malha (m)" name="fabricWidth" value={input.fabricWidth || 0} onChange={handleChange} type="number" step="0.01" suffix="m" />
                   <InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" />
                   
                   <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
                       <div className="flex flex-col gap-2">
                           <label className="text-[10px] font-bold text-gray-500 uppercase">Método de Corte</label>
-                          {/* 3 OPÇÕES DE CORTE */}
                           <div className="flex gap-2 mb-2">
+                              {/* APENAS 2 OPÇÕES */}
                               <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_RISCO'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_RISCO')}>Manual (s/ papel)</button>
                               <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_PLOTTER')}>Plotter (c/ papel)</button>
-                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MACHINE'}))} className={getSelectionButtonClass(input.cuttingType === 'MACHINE')}>Automático</button>
                           </div>
                       </div>
                       
-                      {/* CUSTO DE PAPEL SÓ APARECE SE FOR PLOTTER OU MÁQUINA */}
-                      {(input.cuttingType === 'MANUAL_PLOTTER' || input.cuttingType === 'MACHINE') && (
+                      {input.cuttingType === 'MANUAL_PLOTTER' && (
                           <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3 animate-fade-in">
                               <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" suffix="m" />
                               <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
@@ -203,7 +182,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
-            {/* 3. BENEFICIAMENTO */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center justify-between mb-4 border-b border-sow-border pb-2">
                   <div className="flex items-center gap-2 text-sow-black"><Layers className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">2. Beneficiamento</h3></div>
@@ -263,7 +241,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
-            {/* 4. CONFECÇÃO & LOGÍSTICA */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Truck className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">3. Confecção & Logística</h3></div>
                <div className="grid grid-cols-2 gap-3">
@@ -280,14 +257,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                </div>
             </div>
 
-            {/* 5. ESTRATÉGIA */}
             <div className="bg-white p-5 rounded-xl border-l-4 border-l-sow-green shadow-soft">
                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><TrendingUp className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">4. Estratégia</h3></div>
                <InputGroup label="Margem Líquida Desejada" name="targetMargin" value={input.targetMargin} onChange={handleChange} type="number" suffix="%" />
             </div>
         </div>
 
-        {/* COLUNA DIREITA: RESULTADOS E OTIMIZADOR */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
             {hasDTFSelection && (

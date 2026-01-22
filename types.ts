@@ -14,8 +14,7 @@ export interface SilkPriceTable {
 
 export interface ServicesCosts {
   cuttingManual: number;   
-  cuttingManualPlotter: number; // NOVO: Risco Plotado + Corte Manual
-  cuttingMachine: number;       // NOVO: Corte Automático
+  cuttingManualPlotter: number; 
   plotterPaper: number;    
   sewingStandard: number;  
   dtfPrintMeter: number;   
@@ -57,14 +56,14 @@ export interface ProductInput {
   fabricPricePerKg: number;
   piecesPerKg: number;
   lossPercentage: number;
-  fabricWidth: number; // NOVO: Largura da Malha (para validar plotter)
+  fabricWidth: number; 
 
   // Ribana
   ribanaPricePerKg: number;
   ribanaYield: number;
 
   // Corte
-  cuttingType: 'MANUAL_RISCO' | 'MANUAL_PLOTTER' | 'MACHINE'; // Tipos atualizados
+  cuttingType: 'MANUAL_RISCO' | 'MANUAL_PLOTTER'; 
   plotterMetersTotal: number; 
   plotterFreight: number;     
   cuttingLaborCost: number; 

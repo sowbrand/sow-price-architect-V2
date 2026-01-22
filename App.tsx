@@ -9,7 +9,7 @@ import { DTFCalculator } from './views/DTFCalculator';
 import { Settings } from './views/Settings';
 import { CalculationMode, SettingsData } from './types';
 
-// Configurações Padrão (ATUALIZADO ETAPA 3 - CORTE AVANÇADO)
+// Configurações Padrão
 const DEFAULT_SETTINGS: SettingsData = {
   monthlyFixedCosts: 2000,
   estimatedMonthlyProduction: 1000,
@@ -26,10 +26,9 @@ const DEFAULT_SETTINGS: SettingsData = {
   },
   
   serviceCosts: {
-    // NOVA ESTRUTURA DE CORTE
-    cuttingManual: 0.70,        // Risco Manual
-    cuttingManualPlotter: 0.55, // Risco Impresso
-    cuttingMachine: 0.80,       // Corte Automático
+    // ESTRUTURA DE CORTE ATUALIZADA (2 TIPOS)
+    cuttingManual: 0.70,        // Risco Manual (s/ papel)
+    cuttingManualPlotter: 0.55, // Risco Impresso (c/ papel)
     
     plotterPaper: 5.70,
     sewingStandard: 4.75,

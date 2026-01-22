@@ -125,10 +125,9 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">Corte & Risco</span>
-                {/* CAMPOS ATUALIZADOS PARA OS 3 TIPOS */}
+                {/* CAMPOS ATUALIZADOS PARA OS 2 TIPOS */}
                 <InputGroup label="Corte Manual s/ Plotter (Un)" name="cutM" value={formData.serviceCosts.cuttingManual} onChange={(e) => handleChange('serviceCosts', 'cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Corte Manual c/ Plotter (Un)" name="cutMP" value={formData.serviceCosts.cuttingManualPlotter} onChange={(e) => handleChange('serviceCosts', 'cuttingManualPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
-                <InputGroup label="Corte Automático (Un)" name="cutMach" value={formData.serviceCosts.cuttingMachine} onChange={(e) => handleChange('serviceCosts', 'cuttingMachine', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Papel Plotter (Metro)" name="pap" value={formData.serviceCosts.plotterPaper} onChange={(e) => handleChange('serviceCosts', 'plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
              </div>
              <div className="space-y-3">
