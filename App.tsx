@@ -28,14 +28,14 @@ const DEFAULT_SETTINGS: SettingsData = {
   serviceCosts: {
     cuttingManual: 0.70,        
     cuttingManualPlotter: 0.55, 
-    plotterPaper: 5.70,
-    sewingStandard: 4.75,
+    plotterPaper: 5.70,      
+    sewingStandard: 4.75,    
     dtfPrintMeter: 60.00,
     
-    // Configuração DTF Inicial
-    dtfAppRetail: 2.00,      // Até 100 pçs
-    dtfAppWholesale: 1.50,   // Acima de 100 pçs
-    dtfWholesaleLimit: 100   // Limite
+    // Regra DTF
+    dtfAppRetail: 2.00,      
+    dtfAppWholesale: 1.50,   
+    dtfWholesaleLimit: 100   
   }
 };
 
@@ -88,8 +88,9 @@ const App: React.FC = () => {
           <Settings 
             data={settings} 
             onSave={(newSettings) => {
+              // AQUI ESTAVA O PROBLEMA: REMOVI O ALERT
               setSettings(newSettings);
-              alert('Configurações salvas!');
+              // Agora apenas o modal visual do Settings.tsx será exibido
             }} 
           />
         </div>
