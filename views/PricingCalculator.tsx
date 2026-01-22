@@ -27,23 +27,22 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     // Ref para guardar as configurações anteriores e comparar
     const prevSettingsRef = useRef<SettingsData>(settings);
 
-    // 1. MONITOR DE MUDANÇAS GLOBAIS (A PONTE ENTRE CONFIGURAÇÕES E CÁLCULO)
+    // 1. MONITOR DE MUDANÇAS GLOBAIS
     useEffect(() => {
         const prevSettings = prevSettingsRef.current;
         let hasChanges = false;
 
-        // Verifica se houve mudança em taxas ou custos fixos que afetam o preço
         if (
             prevSettings.defaultTaxRate !== settings.defaultTaxRate ||
             prevSettings.defaultCardRate !== settings.defaultCardRate ||
             prevSettings.defaultMarketingRate !== settings.defaultMarketingRate ||
             prevSettings.monthlyFixedCosts !== settings.monthlyFixedCosts ||
-            prevSettings.estimatedMonthlyProduction !== settings.estimatedMonthlyProduction
+            prevSettings.estimatedMonthlyProduction !== settings.estimatedMonthlyProduction ||
+            prevSettings.meiDasTax !== settings.meiDasTax
         ) {
             hasChanges = true;
         }
 
-        // Verifica se o custo de costura padrão mudou
         if (settings.serviceCosts.sewingStandard !== prevSettings.serviceCosts.sewingStandard) {
             if (input.sewingCost === prevSettings.serviceCosts.sewingStandard) {
                 setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
@@ -51,15 +50,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             }
         }
 
-        // Se houve mudanças relevantes, exibe o alerta
         if (hasChanges) {
             setSettingsChangedAlert(true);
-            // Esconde o alerta após 10 segundos para não poluir
             const timer = setTimeout(() => setSettingsChangedAlert(false), 10000);
             return () => clearTimeout(timer);
         }
 
-        // Atualiza a referência
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
@@ -72,7 +68,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
-             // Injeta o valor manual no cálculo
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  printSetupCost: unitCost, 
@@ -81,7 +76,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              };
         }
         
-        // Usa as settings mais recentes para o cálculo
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfPrintManual, dtfAppManual]);
 
@@ -164,7 +158,11 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 <div className="space-y-3">
                     <InputGroup label="Tipo de Peça" name="productCategory" value={input.productCategory} onChange={handleChange} type="select" options={PRODUCT_CATEGORIES.map(cat => ({ label: cat, value: cat }))} />
                     {input.productCategory === 'Outro' && <InputGroup label="Nome Personalizado" name="customProductName" value={input.customProductName} onChange={handleChange} type="text" />}
-                    <InputGroup label="Qtd. do Lote (Peças)" name="batchSize" value={input.batchSize} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} />
+                    <div className="grid grid-cols-2 gap-3">
+                        <InputGroup label="Qtd. do Lote (Peças)" name="batchSize" value={input.batchSize} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} />
+                        {/* NOVO CAMPO: CUSTO PILOTAGEM */}
+                        <InputGroup label="Pilotagem (Custo Total)" name="pilotingCost" value={input.pilotingCost} onChange={handleChange} type="number" prefix="R$" />
+                    </div>
                 </div>
             </div>
 
@@ -173,7 +171,13 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               <div className="grid grid-cols-2 gap-3">
                   <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
                   <InputGroup label="Rendimento" name="piecesPerKg" value={input.piecesPerKg} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
-                  <InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" />
+                  
+                  {/* NOVOS CAMPOS: RIBANA */}
+                  <InputGroup label="Preço Ribana" name="ribanaPricePerKg" value={input.ribanaPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
+                  <InputGroup label="Rend. Ribana" name="ribanaYield" value={input.ribanaYield} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
+
+                  <div className="col-span-2"><InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" /></div>
+                  
                   <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
                       <div className="flex gap-2 mb-3">
                           <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL')}>Manual</button>
@@ -207,44 +211,30 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                               </select>
                           </div>
 
-                          {/* Renderização Condicional baseada no Tipo */}
                           {item.type === 'DTF' ? (
                               <div className="bg-purple-50 border border-purple-200 rounded p-3">
                                   <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-3 border-b border-purple-200 pb-2">
                                       <CheckCircle2 className="w-4 h-4" /> <span>Integrado com Otimizador</span>
                                   </div>
-                                  
-                                  {/* INPUTS MANUAIS PARA DTF */}
                                   <div className="grid grid-cols-2 gap-3 mb-2">
                                       <div>
                                           <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Impressão (Total Lote)</label>
                                           <div className="relative">
                                               <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
-                                              <input 
-                                                  type="number" 
-                                                  value={dtfPrintManual || ''} 
-                                                  onChange={(e) => setDtfPrintManual(parseFloat(e.target.value))}
-                                                  className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"
-                                              />
+                                              <input type="number" value={dtfPrintManual || ''} onChange={(e) => setDtfPrintManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
                                           </div>
                                       </div>
                                       <div>
                                           <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Aplicação (Total Lote)</label>
                                           <div className="relative">
                                               <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
-                                              <input 
-                                                  type="number" 
-                                                  value={dtfAppManual || ''} 
-                                                  onChange={(e) => setDtfAppManual(parseFloat(e.target.value))}
-                                                  className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"
-                                              />
+                                              <input type="number" value={dtfAppManual || ''} onChange={(e) => setDtfAppManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
                                           </div>
                                       </div>
                                   </div>
                                   <div className="text-[10px] text-purple-400 italic text-center">Copie os valores do painel ao lado</div>
                               </div>
                           ) : (
-                              /* Outros tipos (Silk, Bordado) mantêm inputs manuais */
                               item.type === 'SILK' ? (
                                   <div className="grid grid-cols-2 gap-3">
                                       <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', parseFloat(e.target.value))} type="number" />
@@ -267,8 +257,16 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                <div className="grid grid-cols-2 gap-3">
                    <InputGroup label="Costura (Un)" name="sewingCost" value={input.sewingCost} onChange={handleChange} type="number" prefix="R$" />
                    <InputGroup label="Revisão/Acab." name="finishingCost" value={input.finishingCost} onChange={handleChange} type="number" prefix="R$" />
+                   
+                   {/* NOVO CAMPO: AVIAMENTOS */}
+                   <InputGroup label="Aviamentos (Un)" name="aviamentosCost" value={input.aviamentosCost} onChange={handleChange} type="number" prefix="R$" />
                    <InputGroup label="Embalagem (Un)" name="packagingCost" value={input.packagingCost} onChange={handleChange} type="number" prefix="R$" />
-                   <div className="col-span-2 bg-sow-light p-3 rounded-lg border border-sow-border"><InputGroup label="Logística (Total Lote)" name="logisticsTotalCost" value={input.logisticsTotalCost} onChange={handleChange} type="number" prefix="R$" /></div>
+                   
+                   <div className="col-span-2 bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
+                       <InputGroup label="Logística (Entrada)" name="logisticsTotalCost" value={input.logisticsTotalCost} onChange={handleChange} type="number" prefix="R$" />
+                       {/* NOVO CAMPO: FRETE SAÍDA */}
+                       <InputGroup label="Frete Saída (Cliente)" name="freightOutCost" value={input.freightOutCost} onChange={handleChange} type="number" prefix="R$" />
+                   </div>
                </div>
             </div>
 
@@ -281,7 +279,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         {/* COLUNA DIREITA: RESULTADOS E OTIMIZADOR */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
-            {/* SE DTF ESTIVER ATIVO, MOSTRA A CALCULADORA NO TOPO */}
             {hasDTFSelection && (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 h-[600px] flex flex-col">
                     <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
@@ -290,7 +287,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
-                            {/* OTIMIZADOR APENAS VISUAL */}
                             <DTFCalculator settings={settings} />
                         </div>
                     </div>
@@ -298,8 +294,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             )}
 
             <div className="space-y-4">
-                
-                {/* ALERTA DE MUDANÇA NAS CONFIGURAÇÕES */}
                 {settingsChangedAlert && (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-fade-in-down">
                         <div className="flex gap-3">
@@ -321,7 +315,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                 <button onClick={handleExportXLS} className="w-full py-4 bg-white border border-sow-border hover:border-sow-green text-sow-black hover:text-sow-green font-montserrat font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-soft group mt-2"><Download className="w-5 h-5 text-sow-grey group-hover:text-sow-green transition-colors" /><span>Exportar Planilha (XLS)</span></button>
             </div>
             
-            {/* GRÁFICOS E TABELAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
                 <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col">
                     <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-6 tracking-wider">Composição do Preço</h3>

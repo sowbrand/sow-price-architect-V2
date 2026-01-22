@@ -40,16 +40,20 @@ export const INITIAL_SETTINGS: SettingsData = {
   serviceCosts: DEFAULT_SERVICE_COSTS
 };
 
-// Produto Inicial Padrão (Reset) - ATUALIZADO ETAPA 1
+// Produto Inicial Padrão (Reset) - ETAPA 2 (Com novos campos)
 export const INITIAL_PRODUCT: any = { 
   productCategory: 'Camiseta Casual',
   customProductName: '',
   
-  // Matéria Prima
+  // Matéria Prima (Malha)
   fabricPricePerKg: 60.00, // Atualizado R$ 60,00
   piecesPerKg: 3.5,        // Atualizado 3.5
   lossPercentage: 10,      // Atualizado 10%
   
+  // Matéria Prima (Ribana - NOVO)
+  ribanaPricePerKg: 0.00, 
+  ribanaYield: 0.00,
+
   // Corte
   cuttingType: 'PLOTTER',
   plotterMetersTotal: 0,
@@ -60,14 +64,20 @@ export const INITIAL_PRODUCT: any = {
   embellishments: [],
   
   // Costura 
-  sewingCost: DEFAULT_SERVICE_COSTS.sewingStandard, // Vai puxar 4.75
-  finishingCost: 0.00, // Zerado conforme solicitado
-  packagingCost: 0.00, // Zerado conforme solicitado
+  sewingCost: DEFAULT_SERVICE_COSTS.sewingStandard, 
+  finishingCost: 0.00, 
+  packagingCost: 0.00,
   
+  // Aviamentos (NOVO)
+  aviamentosCost: 0.00, 
+  
+  // Pilotagem (NOVO)
+  pilotingCost: 0.00,
+
   // Logística
   logisticsTotalCost: 0.00,
-  freightOutCost: 0,
+  freightOutCost: 0.00, // Entrega Cliente (NOVO)
   
-  batchSize: 50, // Lote padrão seguro
-  targetMargin: 30 // Margem padrão 30%
+  batchSize: 50, 
+  targetMargin: 30 
 };

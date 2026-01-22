@@ -5,9 +5,14 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     const warnings: string[] = [];
     const safeBatchSize = input.batchSize > 0 ? input.batchSize : 1;
 
-    // 1. Matéria-Prima
+    // 1. Matéria-Prima (Malha + Ribana)
     const fabricBase = input.piecesPerKg > 0 ? input.fabricPricePerKg / input.piecesPerKg : 0;
-    const materialUnit = fabricBase * (1 + input.lossPercentage / 100);
+    
+    // Cálculo Ribana: Se houver rendimento, calcula o custo. Se não, é zero.
+    const ribanaBase = input.ribanaYield > 0 ? input.ribanaPricePerKg / input.ribanaYield : 0;
+    
+    // Soma Malha + Ribana e aplica a perda de corte em ambos
+    const materialUnit = (fabricBase + ribanaBase) * (1 + input.lossPercentage / 100);
 
     // 2. Risco e Corte
     let plotterUnit = 0;
@@ -42,12 +47,9 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         } else if (item.type === 'BORDADO') {
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
-            // Lógica ajustada para usar o valor manual inserido na calculadora
             if (item.printSetupCost && item.printSetupCost > 0) {
-                // Se existe um custo unitário manual injetado (via input manual na tela)
                 itemCost = item.printSetupCost;
             } else {
-                // Fallback para cálculo automático se houver metragem (modo antigo)
                 const meters = item.dtfMetersUsed || 0;
                 const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
                 const appUnit = settings.serviceCosts.dtfApplication;
@@ -58,14 +60,19 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     });
 
     // 4. Confecção e Logística
-    const sewingUnit = input.sewingCost + input.finishingCost;
+    // Soma Aviamentos e Embalagem ao custo de confecção
+    const sewingUnit = input.sewingCost + input.finishingCost + input.aviamentosCost;
+    
+    // Logística Entrada (rateada) + Embalagem + Frete Saída (direto)
     const logisticsFuelPerUnit = input.logisticsTotalCost / safeBatchSize;
     const logisticsInUnit = logisticsFuelPerUnit + input.packagingCost + input.freightOutCost;
 
     // 5. Custos Industriais e Fixos
-    const industrialCostUnit = materialUnit + plotterUnit + cuttingLaborUnit + processingUnit + sewingUnit + logisticsInUnit;
+    // Adiciona o custo de Pilotagem (Custo fixo do modelo rateado)
+    const pilotingUnit = input.pilotingCost / safeBatchSize;
+
+    const industrialCostUnit = materialUnit + plotterUnit + cuttingLaborUnit + processingUnit + sewingUnit + logisticsInUnit + pilotingUnit;
     
-    // Custo Fixo por Peça (Baseado na Produção Mensal Terceirizada)
     const fixedOverheadUnit = settings.estimatedMonthlyProduction > 0 ? settings.monthlyFixedCosts / settings.estimatedMonthlyProduction : 0;
     
     const totalProductionCost = industrialCostUnit + fixedOverheadUnit;
@@ -103,14 +110,12 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     };
 };
 
-// --- NOVA FUNÇÃO: ENGENHARIA REVERSA (PREÇO -> CUSTO ALVO) ---
+// --- ENGENHARIA REVERSA ---
 export const calculateReverse = (targetPrice: number, input: ProductInput, settings: SettingsData): CalculationResult => {
     const warnings: string[] = [];
     
-    // 1. Definição das Taxas de Saída
     let appliedTaxRate = settings.taxRegime === 'MEI' ? 0 : settings.defaultTaxRate;
     
-    // 2. Cálculo dos valores monetários baseados no Preço Alvo
     const taxesUnit = targetPrice * (appliedTaxRate / 100);
     const cardFeesUnit = targetPrice * (settings.defaultCardRate / 100);
     const marketingUnit = targetPrice * (settings.defaultMarketingRate / 100);
@@ -119,7 +124,6 @@ export const calculateReverse = (targetPrice: number, input: ProductInput, setti
 
     const commercialExpensesUnit = taxesUnit + cardFeesUnit + marketingUnit + commissionUnit;
 
-    // 3. O que sobra é o Teto de Custo (Target Cost)
     const maxProductionCost = targetPrice - commercialExpensesUnit - netProfitUnit;
 
     if (maxProductionCost < 0) {

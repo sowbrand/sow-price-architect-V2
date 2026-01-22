@@ -27,7 +27,7 @@ export interface SettingsData {
   // Regime Tributário
   taxRegime: 'SIMPLES' | 'MEI';
   defaultTaxRate: number; // Porcentagem (%) para Simples Nacional
-  meiDasTax: number;      // Valor Fixo (R$) para MEI [NOVO CAMPO]
+  meiDasTax: number;      // Valor Fixo (R$) para MEI
   defaultCardRate: number;
   defaultMarketingRate: number;
   defaultCommissionRate: number;
@@ -47,24 +47,45 @@ export interface Embellishment {
   embroideryCostPerThousand?: number;
   dtfMetersUsed?: number; 
   calculatedUnitCost?: number;
+  printUnitCost?: number;
 }
 
 export interface ProductInput {
   productCategory: string;
   customProductName: string;
+  
+  // Malha
   fabricPricePerKg: number;
   piecesPerKg: number;
   lossPercentage: number;
+
+  // NOVOS CAMPOS: Ribana
+  ribanaPricePerKg: number;
+  ribanaYield: number; // Rendimento (pçs/kg)
+
+  // Corte
   cuttingType: 'MANUAL' | 'PLOTTER';
   plotterMetersTotal: number; 
   plotterFreight: number;     
   cuttingLaborCost: number; 
+  
   embellishments: Embellishment[];
+  
+  // Confecção
   sewingCost: number; 
   finishingCost: number;
   packagingCost: number;
-  logisticsTotalCost: number; 
-  freightOutCost: number;
+  
+  // NOVOS CAMPOS: Aviamentos
+  aviamentosCost: number; // Por peça (etiqueta, viés, etc)
+
+  // Logística
+  logisticsTotalCost: number; // Entrada
+  freightOutCost: number;     // Saída (Cliente - NOVO CAMPO)
+  
+  // NOVO CAMPO: Pilotagem
+  pilotingCost: number; // Custo fixo do desenvolvimento
+
   batchSize: number;
   targetMargin: number;
 }
