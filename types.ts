@@ -19,10 +19,10 @@ export interface ServicesCosts {
   sewingStandard: number;  
   dtfPrintMeter: number;   
   
-  // CAMPOS DE ESCALONAMENTO DTF
+  // NOVOS CAMPOS: REGRA DE PREÇO DINÂMICO DTF
   dtfAppRetail: number;    // Preço Varejo (ex: R$ 2,00)
   dtfAppWholesale: number; // Preço Atacado (ex: R$ 1,50)
-  dtfWholesaleLimit: number; // Limite para virada (ex: 100)
+  dtfWholesaleLimit: number; // Limite de peças (ex: 100)
 }
 
 export interface SettingsData {

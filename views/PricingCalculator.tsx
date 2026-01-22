@@ -49,7 +49,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
-    // CORREÇÃO NO USE EFFECT PARA EVITAR SHALLOW COPY E GARANTIR CALCULO LIMPO
+    // CORREÇÃO CRÍTICA: LIMPEZA PROFUNDA DOS DADOS ANTES DE CALCULAR
     useEffect(() => {
         // Cria uma cópia profunda dos embellishments para não mutar o estado original
         const calculatedInput = { 
@@ -63,13 +63,18 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
+             // FORÇA A LIMPEZA: Sobrescreve o objeto DTF garantindo que não tenha lixo
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  printSetupCost: unitCost, 
                  printPassCost: 0,
-                 dtfMetersUsed: 0 
+                 dtfMetersUsed: 0,
+                 // Garante que campos de Silk sejam ignorados se existirem
+                 printColors: 0,
+                 isRegraving: false
              };
         }
+        
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfPrintManual, dtfAppManual]);
 
@@ -91,22 +96,24 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       setInput(prev => ({ ...prev, embellishments: prev.embellishments.filter(i => i.id !== id) }));
     };
 
-    // FUNÇÃO CORRIGIDA: LIMPA O CUSTO DA TELA (R$ 35) QUANDO MUDA PARA DTF
     const updateEmbellishment = (id: string, field: keyof Embellishment, value: string | number | boolean) => {
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
+                
                 const newItem = { ...item, [field]: value };
 
-                // SE MUDOU O TIPO, LIMPA OS DADOS DO TIPO ANTERIOR
+                // LIMPEZA IMEDIATA AO TROCAR O TIPO
                 if (field === 'type') {
                     if (value === 'DTF') {
-                        newItem.printSetupCost = 0; // Zera o custo de tela do Silk
+                        // ZERA TUDO O QUE FOR DE SILK
+                        newItem.printSetupCost = 0; 
                         newItem.printPassCost = 0;
                         newItem.printColors = 0;
                         newItem.isRegraving = false;
                     } else if (value === 'SILK') {
-                        newItem.printSetupCost = 0; // Será recalculado abaixo
+                        newItem.printSetupCost = 0; // Será recalculado pelo silkSize/cores
+                        newItem.printColors = 1;
                     }
                 }
 
@@ -189,7 +196,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                       <div className="flex flex-col gap-2">
                           <label className="text-[10px] font-bold text-gray-500 uppercase">Método de Corte</label>
                           <div className="flex gap-2 mb-2">
-                              {/* APENAS 2 OPÇÕES */}
                               <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_RISCO'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_RISCO')}>Manual (s/ papel)</button>
                               <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_PLOTTER')}>Plotter (c/ papel)</button>
                           </div>

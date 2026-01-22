@@ -26,7 +26,7 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         cuttingLaborUnit = settings.serviceCosts.cuttingManualPlotter;
     }
 
-    // 3. Beneficiamento
+    // 3. Beneficiamento (LÓGICA DTF AJUSTADA)
     let processingUnit = 0;
     input.embellishments.forEach((item, index) => {
         let itemCost = 0;
@@ -47,12 +47,13 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
             // REGRA: SE Quantidade > Limite (100) -> Atacado. SENÃO -> Varejo.
+            // Nota: Se a quantidade for IGUAL ao limite (100), ainda é Varejo (<= 100).
             const applicationCost = input.batchSize > settings.serviceCosts.dtfWholesaleLimit 
                 ? settings.serviceCosts.dtfAppWholesale 
                 : settings.serviceCosts.dtfAppRetail;
 
             if (item.printSetupCost && item.printSetupCost > 0) {
-                // Se existe valor manual injetado, soma com a aplicação automática
+                // Se existe valor manual injetado (via Otimizador ou Manual)
                 itemCost = item.printSetupCost + applicationCost;
             } else {
                 // Se não tem impressão definida, cobra só a aplicação
