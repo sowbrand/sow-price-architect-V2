@@ -99,19 +99,27 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   const [scale, setScale] = useState(4); 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // --- CONTROLE DE ESCALA DA VISUALIZAÇÃO ---
+  // --- CONTROLE DE ESCALA DA VISUALIZAÇÃO (AJUSTADO PARA MAXIMIZAR LARGURA) ---
   useEffect(() => {
     const handleResize = () => {
         if (containerRef.current) {
             // Calcula a escala baseada na largura da coluna direita
-            const containerWidth = containerRef.current.offsetWidth - 48; // Padding
-            const newScale = Math.max(containerWidth / ROLL_WIDTH_CM, 2); // Mínimo de 2px por cm
+            // Subtrai uma margem menor para aproveitar melhor o espaço (ex: 20px)
+            const paddingX = 20; 
+            const containerWidth = containerRef.current.clientWidth - paddingX; 
+            
+            // Calcula a escala para que a largura do rolo ocupe o espaço disponível
+            // Mantém um mínimo de 2px por cm para não ficar ilegível
+            const newScale = Math.max(containerWidth / ROLL_WIDTH_CM, 2); 
+            
             setScale(newScale);
         }
     };
 
     // Executa no inicio e no resize
     handleResize();
+    // Pequeno delay para garantir que o layout esteja pronto
+    setTimeout(handleResize, 100);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
