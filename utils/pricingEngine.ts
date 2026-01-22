@@ -42,10 +42,17 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         } else if (item.type === 'BORDADO') {
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
-            const meters = item.dtfMetersUsed || 0;
-            const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
-            const appUnit = settings.serviceCosts.dtfApplication;
-            itemCost = printUnit + appUnit;
+            // Lógica ajustada para usar o valor manual inserido na calculadora
+            if (item.printSetupCost && item.printSetupCost > 0) {
+                // Se existe um custo unitário manual injetado (via input manual na tela)
+                itemCost = item.printSetupCost;
+            } else {
+                // Fallback para cálculo automático se houver metragem (modo antigo)
+                const meters = item.dtfMetersUsed || 0;
+                const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
+                const appUnit = settings.serviceCosts.dtfApplication;
+                itemCost = printUnit + appUnit;
+            }
         }
         processingUnit += itemCost;
     });
@@ -57,7 +64,10 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
 
     // 5. Custos Industriais e Fixos
     const industrialCostUnit = materialUnit + plotterUnit + cuttingLaborUnit + processingUnit + sewingUnit + logisticsInUnit;
+    
+    // Custo Fixo por Peça (Baseado na Produção Mensal Terceirizada)
     const fixedOverheadUnit = settings.estimatedMonthlyProduction > 0 ? settings.monthlyFixedCosts / settings.estimatedMonthlyProduction : 0;
+    
     const totalProductionCost = industrialCostUnit + fixedOverheadUnit;
 
     // 6. Formação de Preço (Markup)
@@ -105,24 +115,22 @@ export const calculateReverse = (targetPrice: number, input: ProductInput, setti
     const cardFeesUnit = targetPrice * (settings.defaultCardRate / 100);
     const marketingUnit = targetPrice * (settings.defaultMarketingRate / 100);
     const commissionUnit = targetPrice * (settings.defaultCommissionRate / 100);
-    const netProfitUnit = targetPrice * (input.targetMargin / 100); // Lucro que eu QUERO ter
+    const netProfitUnit = targetPrice * (input.targetMargin / 100); 
 
     const commercialExpensesUnit = taxesUnit + cardFeesUnit + marketingUnit + commissionUnit;
 
     // 3. O que sobra é o Teto de Custo (Target Cost)
-    // Preço - Impostos - Despesas - Lucro = Custo Máximo
     const maxProductionCost = targetPrice - commercialExpensesUnit - netProfitUnit;
 
     if (maxProductionCost < 0) {
         warnings.push("🔴 Preço Alvo inviável: Custos de venda superam o preço.");
     }
 
-    // Retorna estrutura compatível, zerando os custos detalhados pois não os temos
     return {
         materialUnit: 0, plotterUnit: 0, cuttingLaborUnit: 0, processingUnit: 0, 
         sewingUnit: 0, logisticsInUnit: 0, fixedOverheadUnit: 0,
         industrialCostUnit: 0,
-        totalProductionCost: maxProductionCost, // Aqui vai o TARGET COST
+        totalProductionCost: maxProductionCost, 
         suggestedSalePrice: targetPrice,
         taxesUnit, cardFeesUnit, marketingUnit, commissionUnit, commercialExpensesUnit, netProfitUnit,
         markup: maxProductionCost > 0 ? targetPrice / maxProductionCost : 0,

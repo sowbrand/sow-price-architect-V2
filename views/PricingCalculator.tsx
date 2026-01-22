@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, AlertTriangle, Download, Info, CheckCircle2, DollarSign, Printer } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
 import { InputGroup } from '../components/InputGroup';
 import { PriceCard } from '../components/PriceCard';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
-import { DTFCalculator } from './DTFCalculator'; // IMPORTAÇÃO DA CALCULADORA DTF
+import { DTFCalculator } from './DTFCalculator'; 
 import { INITIAL_PRODUCT } from '../constants/defaults';
 import type { SettingsData, ProductInput, CalculationResult, Embellishment } from '../types';
 
@@ -21,13 +21,49 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     const [dtfPrintManual, setDtfPrintManual] = useState(0);
     const [dtfAppManual, setDtfAppManual] = useState(0);
 
-    useEffect(() => {
-        if (input.sewingCost === INITIAL_PRODUCT.sewingCost && settings.serviceCosts.sewingStandard !== input.sewingCost) {
-            setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
-        }
-    }, [settings.serviceCosts]);
+    // --- ESTADO PARA ALERTAR MUDANÇA NAS CONFIGURAÇÕES ---
+    const [settingsChangedAlert, setSettingsChangedAlert] = useState(false);
+    
+    // Ref para guardar as configurações anteriores e comparar
+    const prevSettingsRef = useRef<SettingsData>(settings);
 
-    // Recalcula cenário
+    // 1. MONITOR DE MUDANÇAS GLOBAIS (A PONTE ENTRE CONFIGURAÇÕES E CÁLCULO)
+    useEffect(() => {
+        const prevSettings = prevSettingsRef.current;
+        let hasChanges = false;
+
+        // Verifica se houve mudança em taxas ou custos fixos que afetam o preço
+        if (
+            prevSettings.defaultTaxRate !== settings.defaultTaxRate ||
+            prevSettings.defaultCardRate !== settings.defaultCardRate ||
+            prevSettings.defaultMarketingRate !== settings.defaultMarketingRate ||
+            prevSettings.monthlyFixedCosts !== settings.monthlyFixedCosts ||
+            prevSettings.estimatedMonthlyProduction !== settings.estimatedMonthlyProduction
+        ) {
+            hasChanges = true;
+        }
+
+        // Verifica se o custo de costura padrão mudou
+        if (settings.serviceCosts.sewingStandard !== prevSettings.serviceCosts.sewingStandard) {
+            if (input.sewingCost === prevSettings.serviceCosts.sewingStandard) {
+                setInput(prev => ({ ...prev, sewingCost: settings.serviceCosts.sewingStandard }));
+                hasChanges = true;
+            }
+        }
+
+        // Se houve mudanças relevantes, exibe o alerta
+        if (hasChanges) {
+            setSettingsChangedAlert(true);
+            // Esconde o alerta após 10 segundos para não poluir
+            const timer = setTimeout(() => setSettingsChangedAlert(false), 10000);
+            return () => clearTimeout(timer);
+        }
+
+        // Atualiza a referência
+        prevSettingsRef.current = settings;
+    }, [settings, input.sewingCost]);
+
+    // 2. CÁLCULO E ATUALIZAÇÃO DO CENÁRIO
     useEffect(() => {
         const calculatedInput = { ...input };
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
@@ -44,6 +80,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                  dtfMetersUsed: 0 
              };
         }
+        
+        // Usa as settings mais recentes para o cálculo
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfPrintManual, dtfAppManual]);
 
@@ -240,7 +278,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             </div>
         </div>
 
-        {/* COLUNA DIREITA: OTIMIZADOR (VISÍVEL APENAS SE DTF) */}
+        {/* COLUNA DIREITA: RESULTADOS E OTIMIZADOR */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
             
             {/* SE DTF ESTIVER ATIVO, MOSTRA A CALCULADORA NO TOPO */}
@@ -252,7 +290,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 p-2">
-                            {/* OTIMIZADOR AGORA APENAS VISUAL */}
+                            {/* OTIMIZADOR APENAS VISUAL */}
                             <DTFCalculator settings={settings} />
                         </div>
                     </div>
@@ -260,10 +298,30 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
             )}
 
             <div className="space-y-4">
+                
+                {/* ALERTA DE MUDANÇA NAS CONFIGURAÇÕES */}
+                {settingsChangedAlert && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-fade-in-down">
+                        <div className="flex gap-3">
+                            <div className="bg-blue-100 p-2 rounded-full h-fit">
+                                <RefreshCw className="w-4 h-4 text-blue-600 animate-spin-slow" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-blue-800">Taxas ou Custos Globais Atualizados!</h4>
+                                <p className="text-xs text-blue-600 mt-1">O cálculo de preço foi ajustado automaticamente para refletir as novas configurações.</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setSettingsChangedAlert(false)} className="text-blue-400 hover:text-blue-600 transition-colors">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+
                 <PriceCard result={result} productName={input.customProductName} category={input.productCategory} taxRegime={settings.taxRegime} />
                 <button onClick={handleExportXLS} className="w-full py-4 bg-white border border-sow-border hover:border-sow-green text-sow-black hover:text-sow-green font-montserrat font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-soft group mt-2"><Download className="w-5 h-5 text-sow-grey group-hover:text-sow-green transition-colors" /><span>Exportar Planilha (XLS)</span></button>
             </div>
             
+            {/* GRÁFICOS E TABELAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
                 <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col">
                     <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-6 tracking-wider">Composição do Preço</h3>
