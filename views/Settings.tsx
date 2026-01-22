@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Save, CheckCircle, X } from 'lucide-react'; // Ícones adicionados
+import { Save, CheckCircle, X } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import type { SettingsData } from '../types';
 
@@ -9,34 +9,34 @@ interface SettingsProps {
   onSave: (newSettings: SettingsData) => void;
 }
 
-// --- NOVO COMPONENTE: MODAL DE SUCESSO (ESTILO SOWBRAND) ---
+// --- NOVO MODAL DE SUCESSO (ESTILO SOWBRAND) ---
 const SuccessModal = ({ onClose }: { onClose: () => void }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm transition-all">
-    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center w-[400px] relative animate-bounce-in">
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm animate-fade-in">
+    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center w-[400px] relative animate-bounce-in transform scale-100 transition-all">
       
       {/* Botão Fechar (X) */}
       <button 
         onClick={onClose}
-        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-1 hover:bg-gray-100 rounded-full"
       >
         <X className="w-5 h-5" />
       </button>
 
       {/* Ícone de Sucesso Animado */}
-      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-5 ring-4 ring-green-100">
+      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-5 ring-4 ring-green-100 animate-pulse-slow">
         <CheckCircle className="w-10 h-10 text-sow-green" />
       </div>
 
       {/* Textos */}
-      <h3 className="text-xl font-helvetica font-bold text-sow-black mb-2">Sucesso!</h3>
-      <p className="text-sm text-sow-grey text-center mb-8 px-4">
+      <h3 className="text-xl font-helvetica font-bold text-sow-black mb-2 text-center">Sucesso!</h3>
+      <p className="text-sm text-sow-grey text-center mb-8 px-4 leading-relaxed">
         As configurações globais do sistema foram atualizadas e salvas com segurança.
       </p>
 
       {/* Botão de Confirmação */}
       <button
         onClick={onClose}
-        className="w-full py-3.5 bg-sow-green text-white rounded-xl font-bold font-montserrat shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200"
+        className="w-full py-3.5 bg-sow-green text-white rounded-xl font-bold font-montserrat shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-wide text-xs"
       >
         OK, Entendi
       </button>
@@ -79,16 +79,20 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
   };
 
   const handleSave = () => {
+    // Salva os dados no App.tsx
     onSave(formData);
+    
+    // Reseta o estado de "alterado"
     setHasChanges(false);
-    // Em vez de alert(), agora mostramos o modal
+    
+    // ATENÇÃO: Aqui removemos o alert() e chamamos o modal
     setShowSuccessModal(true);
   };
 
   return (
     <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin relative">
       
-      {/* Renderização Condicional do Modal */}
+      {/* O MODAL AGORA É RENDERIZADO AQUI SE O ESTADO FOR TRUE */}
       {showSuccessModal && <SuccessModal onClose={() => setShowSuccessModal(false)} />}
 
       <div className="flex justify-between items-center mb-6">
