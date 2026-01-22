@@ -11,18 +11,20 @@ interface ComparatorProps {
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
+  // Inicialização dos Cenários
   const [inputA, setInputA] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário A' });
   const [inputB, setInputB] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário B' });
 
   const [resultA, setResultA] = useState<CalculationResult | null>(null);
   const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
-  // --- MEMÓRIA DE DADOS ---
+  // Memória para persistência de dados ao trocar abas
   const [memSilkColorsA, setMemSilkColorsA] = useState(1);
   const [memDtfCostA, setMemDtfCostA] = useState(0);
   const [memSilkColorsB, setMemSilkColorsB] = useState(1);
   const [memDtfCostB, setMemDtfCostB] = useState(0);
 
+  // Cálculos automáticos
   useEffect(() => {
     setResultA(calculateScenario(inputA, settings));
   }, [inputA, settings]);
@@ -31,12 +33,19 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     setResultB(calculateScenario(inputB, settings));
   }, [inputB, settings]);
 
+  // Manipuladores de Input
   const handleChange = (
     setInput: React.Dispatch<React.SetStateAction<ProductInput>>,
     field: keyof ProductInput,
     value: any
   ) => {
     setInput(prev => ({ ...prev, [field]: value }));
+  };
+
+  const blockDecimals = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) {
+      e.preventDefault();
+    }
   };
 
   const getActiveType = (input: ProductInput) => {
@@ -97,8 +106,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Garante que os dados sejam números puros para o gráfico
-  const safeNumber = (val: any) => {
+  // Sanitização de dados para o gráfico
+  const safeVal = (val: number | undefined | null) => {
       const num = Number(val);
       return isNaN(num) ? 0 : num;
   };
@@ -106,23 +115,23 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   const chartData = [
     { 
         name: 'Custo Prod.', 
-        A: safeNumber(resultA?.totalProductionCost), 
-        B: safeNumber(resultB?.totalProductionCost) 
+        A: safeVal(resultA?.totalProductionCost), 
+        B: safeVal(resultB?.totalProductionCost) 
     },
     { 
         name: 'Preço Venda', 
-        A: safeNumber(resultA?.suggestedSalePrice), 
-        B: safeNumber(resultB?.suggestedSalePrice) 
+        A: safeVal(resultA?.suggestedSalePrice), 
+        B: safeVal(resultB?.suggestedSalePrice) 
     },
     { 
         name: 'Lucro Liq.', 
-        A: safeNumber(resultA?.netProfitUnit), 
-        B: safeNumber(resultB?.netProfitUnit) 
+        A: safeVal(resultA?.netProfitUnit), 
+        B: safeVal(resultB?.netProfitUnit) 
     },
   ];
 
-  const profitA = safeNumber(resultA?.netProfitUnit);
-  const profitB = safeNumber(resultB?.netProfitUnit);
+  const profitA = safeVal(resultA?.netProfitUnit);
+  const profitB = safeVal(resultB?.netProfitUnit);
   const winner = profitA > profitB ? 'A' : 'B';
   const diff = Math.abs(profitA - profitB);
 
@@ -150,7 +159,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             value={inputA.batchSize} 
             onChange={(e) => handleChange(setInputA, 'batchSize', parseInt(e.target.value) || 0)} 
             type="number" 
-            step="1" 
+            step="1"
+            onKeyDown={blockDecimals} 
           />
           <InputGroup label="Preço Malha (R$/kg)" name="fabA" value={inputA.fabricPricePerKg} onChange={(e) => handleChange(setInputA, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
@@ -174,7 +184,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
             {getActiveType(inputA) === 'SILK' && (
                 <div className="bg-gray-50 p-2 rounded border border-gray-200 animate-fade-in">
-                    <InputGroup label="Nº de Cores" name="colorsA" value={inputA.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('A', 'printColors', parseInt(e.target.value))} type="number" step="1" />
+                    <InputGroup label="Nº de Cores" name="colorsA" value={inputA.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('A', 'printColors', parseInt(e.target.value))} type="number" step="1" onKeyDown={blockDecimals} />
                 </div>
             )}
             {getActiveType(inputA) === 'DTF' && (
@@ -198,46 +208,44 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
         {/* === GRÁFICO CENTRAL & VEREDITO === */}
         <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[400px]">
+            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
                 
-                {/* SOLUÇÃO GRÁFICO: USO DE CONTAINER ABSOLUTO PARA FORÇAR RENDERIZAÇÃO */}
-                <div style={{ width: '100%', height: '300px', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                                data={chartData} 
-                                margin={{top: 20, right: 30, left: 20, bottom: 5}}
-                                barGap={8}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                <XAxis 
-                                    dataKey="name" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#6b7280', dy: 10}} 
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
-                                    tickFormatter={(value) => `R$${value}`}
-                                />
-                                <Tooltip 
-                                    cursor={{fill: '#f9fafb'}}
-                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
-                                    formatter={(val: number) => [formatCurrency(val), '']}
-                                />
-                                <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Montserrat' }} />
-                                
-                                <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                                <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                {/* GRÁFICO: Key removida para evitar erro de sintaxe, altura fixa mantida */}
+                <div style={{ width: '100%', height: '300px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart 
+                            data={chartData} 
+                            margin={{top: 20, right: 30, left: 0, bottom: 0}}
+                            barGap={10}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#6b7280', dy: 10}} 
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
+                                tickFormatter={(value) => `R$${value}`}
+                            />
+                            <Tooltip 
+                                cursor={{fill: '#f9fafb'}}
+                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
+                                formatter={(val: number) => [formatCurrency(val), '']}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Montserrat' }} />
+                            
+                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
+                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
 
-                <div className="flex justify-center mt-4 border-t border-gray-100 pt-4">
+                <div className="flex justify-center mt-6 border-t border-gray-100 pt-4">
                     {/* Legenda automática gerenciada pelo Recharts */}
                 </div>
             </div>
@@ -283,7 +291,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             value={inputB.batchSize} 
             onChange={(e) => handleChange(setInputB, 'batchSize', parseInt(e.target.value) || 0)} 
             type="number" 
-            step="1" 
+            step="1"
+            onKeyDown={blockDecimals} 
           />
           <InputGroup label="Preço Malha (R$/kg)" name="fabB" value={inputB.fabricPricePerKg} onChange={(e) => handleChange(setInputB, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
@@ -307,7 +316,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
             {getActiveType(inputB) === 'SILK' && (
                 <div className="bg-green-50 p-2 rounded border border-green-100 animate-fade-in">
-                    <InputGroup label="Nº de Cores" name="colorsB" value={inputB.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('B', 'printColors', parseInt(e.target.value))} type="number" step="1" />
+                    <InputGroup label="Nº de Cores" name="colorsB" value={inputB.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('B', 'printColors', parseInt(e.target.value))} type="number" step="1" onKeyDown={blockDecimals} />
                 </div>
             )}
             {getActiveType(inputB) === 'DTF' && (
