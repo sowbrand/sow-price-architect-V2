@@ -19,10 +19,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
   // --- MEMÓRIA DE DADOS ---
-  // Cenário A
   const [memSilkColorsA, setMemSilkColorsA] = useState(1);
   const [memDtfCostA, setMemDtfCostA] = useState(0);
-  // Cenário B
   const [memSilkColorsB, setMemSilkColorsB] = useState(1);
   const [memDtfCostB, setMemDtfCostB] = useState(0);
 
@@ -56,14 +54,11 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     type: 'NONE' | 'SILK' | 'DTF'
   ) => {
     const setInput = scenario === 'A' ? setInputA : setInputB;
-    
-    // Recupera da memória correta
     const savedColors = scenario === 'A' ? memSilkColorsA : memSilkColorsB;
     const savedDtfCost = scenario === 'A' ? memDtfCostA : memDtfCostB;
 
     setInput(prev => {
       const newEmbellishments = [];
-      
       if (type === 'SILK') {
         newEmbellishments.push({ 
             id: `comp_silk_${scenario}`, 
@@ -79,7 +74,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             dtfManualUnitCost: savedDtfCost 
         });
       }
-      
       return { ...prev, embellishments: newEmbellishments as any };
     });
   };
@@ -109,27 +103,33 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Dados para o gráfico
+  // FUNÇÃO DE SEGURANÇA PARA O GRÁFICO (Remove NaN/Null)
+  const safeNumber = (val: any) => {
+      const num = Number(val);
+      return isNaN(num) ? 0 : num;
+  };
+
+  // Dados para o gráfico (Dados Sanitizados)
   const chartData = [
     { 
         name: 'Custo Prod.', 
-        A: Number(resultA?.totalProductionCost || 0), 
-        B: Number(resultB?.totalProductionCost || 0) 
+        A: safeNumber(resultA?.totalProductionCost), 
+        B: safeNumber(resultB?.totalProductionCost) 
     },
     { 
         name: 'Preço Venda', 
-        A: Number(resultA?.suggestedSalePrice || 0), 
-        B: Number(resultB?.suggestedSalePrice || 0) 
+        A: safeNumber(resultA?.suggestedSalePrice), 
+        B: safeNumber(resultB?.suggestedSalePrice) 
     },
     { 
         name: 'Lucro Liq.', 
-        A: Number(resultA?.netProfitUnit || 0), 
-        B: Number(resultB?.netProfitUnit || 0) 
+        A: safeNumber(resultA?.netProfitUnit), 
+        B: safeNumber(resultB?.netProfitUnit) 
     },
   ];
 
-  const profitA = resultA?.netProfitUnit || 0;
-  const profitB = resultB?.netProfitUnit || 0;
+  const profitA = safeNumber(resultA?.netProfitUnit);
+  const profitB = safeNumber(resultB?.netProfitUnit);
   const winner = profitA > profitB ? 'A' : 'B';
   const diff = Math.abs(profitA - profitB);
 
@@ -151,14 +151,13 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-gray-600">CENÁRIO A (Base)</h3>
           </div>
           
-          {/* CORREÇÃO 1: parseInt para Qtd. Lote */}
           <InputGroup 
             label="Qtd. Lote" 
             name="batchA" 
             value={inputA.batchSize} 
             onChange={(e) => handleChange(setInputA, 'batchSize', parseInt(e.target.value) || 0)} 
             type="number" 
-            step="1" // Força setas de inteiro
+            step="1" 
           />
           <InputGroup label="Preço Malha (R$/kg)" name="fabA" value={inputA.fabricPricePerKg} onChange={(e) => handleChange(setInputA, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
@@ -207,16 +206,16 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
         {/* === GRÁFICO CENTRAL & VEREDITO === */}
         <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[350px]">
+            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[400px]">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
                 
-                {/* CORREÇÃO 2: Estilo explícito de altura e renderização condicional */}
-                <div style={{ width: '100%', height: '250px' }}>
+                {/* SOLUÇÃO GRÁFICO: Wrapper com dimensões explícitas e flexíveis */}
+                <div className="w-full flex-1 min-h-[300px]" style={{ minHeight: '300px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart 
                             data={chartData} 
-                            barGap={5} 
-                            barSize={40} 
+                            barGap={8} 
+                            barSize={32} 
                             margin={{top: 20, right: 30, left: 20, bottom: 5}}
                         >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -237,8 +236,8 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                                 contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
                                 formatter={(val: number) => [formatCurrency(val), '']}
                             />
-                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} animationDuration={500} />
-                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} animationDuration={500} />
+                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} animationDuration={800} />
+                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} animationDuration={800} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -284,7 +283,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-sow-green">CENÁRIO B (Simulação)</h3>
           </div>
           
-          {/* CORREÇÃO 1: parseInt para Qtd. Lote */}
           <InputGroup 
             label="Qtd. Lote" 
             name="batchB" 
