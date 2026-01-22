@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info, PieChart as PieIcon } from 'lucide-react';
+import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, PieChart as PieIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { InputGroup } from '../components/InputGroup';
 import { PriceCard } from '../components/PriceCard';
@@ -15,15 +15,9 @@ interface PricingCalculatorProps {
 export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }) => {
     const [input, setInput] = useState<ProductInput>(INITIAL_PRODUCT);
     const [result, setResult] = useState<CalculationResult | null>(null);
-    
-    // --- ESTADOS PARA INPUT MANUAL DO DTF ---
     const [dtfPrintManual, setDtfPrintManual] = useState(0);
     const [dtfAppManual, setDtfAppManual] = useState(0);
-
-    // --- ESTADO PARA ALERTAR MUDANÇA NAS CONFIGURAÇÕES ---
     const [settingsChangedAlert, setSettingsChangedAlert] = useState(false);
-    
-    // Ref para guardar as configurações anteriores e comparar
     const prevSettingsRef = useRef<SettingsData>(settings);
 
     // 1. MONITOR DE MUDANÇAS GLOBAIS
@@ -58,19 +52,16 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
-    // 2. CÁLCULO E ATUALIZAÇÃO DO CENÁRIO (DTF MANUAL)
+    // 2. CÁLCULO E ATUALIZAÇÃO DO CENÁRIO
     useEffect(() => {
         const calculatedInput = { 
             ...input, 
             embellishments: input.embellishments.map(e => ({...e})) 
         };
-        
         const dtfItemIndex = calculatedInput.embellishments.findIndex(e => e.type === 'DTF');
-        
         if (dtfItemIndex >= 0) {
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
-             
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  dtfManualUnitCost: unitCost, 
@@ -80,7 +71,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                  printSetupCost: 0
              };
         }
-        
         setResult(calculateScenario(calculatedInput, settings));
     }, [input, settings, dtfPrintManual, dtfAppManual]);
 
@@ -106,15 +96,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
-                
                 let cleanValue = value;
                 if (field === 'printColors' || field === 'embroideryStitchCount') {
                     cleanValue = typeof value === 'string' ? parseInt(value) || 0 : Math.floor(value as number);
                     if (field === 'printColors' && cleanValue < 1) cleanValue = 1;
                 }
-
                 const newItem = { ...item, [field]: cleanValue };
-
                 if (field === 'type') {
                     if (value === 'DTF') {
                         newItem.printSetupCost = 0; 
@@ -126,7 +113,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                         newItem.silkSize = 'SMALL';
                     }
                 }
-
                 if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM') {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
                     const colors = newItem.printColors || 1;
@@ -134,7 +120,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     newItem.printSetupCost = newItem.isRegraving ? table.screenRemake : table.screenNew;
                     newItem.printPassCost = table.firstColor + (extraColors * table.extraColor);
                 }
-                
                 return newItem;
             });
             return { ...prev, embellishments: updatedList };
@@ -158,7 +143,6 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       XLSX.writeFile(wb, `SowPrice_${productName}.xlsx`);
     };
 
-    // Dados preparados para a visualização de Barras
     const compositionData = result ? [
       { name: 'Matéria-Prima', value: result.materialUnit, color: '#f59e0b' },
       { name: 'Corte/Risco', value: result.plotterUnit + result.cuttingLaborUnit, color: '#6366f1' },
@@ -169,231 +153,208 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       { name: 'Despesas Com.', value: result.commercialExpensesUnit, color: '#ef4444' },
       { name: 'Lucro Líquido', value: result.netProfitUnit, color: '#72bf03' },
     ] : [];
-
     const totalComposition = result ? result.suggestedSalePrice : 1;
-
     const PRODUCT_CATEGORIES = ['Camiseta Oversized', 'Camiseta Streetwear', 'Camiseta Casual', 'Camiseta Slim', 'Camiseta Feminina', 'Outro'];
     const getSelectionButtonClass = (isActive: boolean) => `flex-1 py-2.5 text-xs font-montserrat font-bold rounded-lg border transition-all duration-200 ${isActive ? 'bg-sow-black text-white border-sow-black shadow-md' : 'bg-white text-sow-grey border-sow-border hover:bg-gray-50'}`;
-
     const hasDTFSelection = input.embellishments.some(e => e.type === 'DTF');
 
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
-        {/* COLUNA ESQUERDA: INPUTS */}
-        <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
-            
-            <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
-                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
-                <div className="space-y-3">
-                    <InputGroup label="Tipo de Peça" name="productCategory" value={input.productCategory} onChange={handleChange} type="select" options={PRODUCT_CATEGORIES.map(cat => ({ label: cat, value: cat }))} />
-                    {input.productCategory === 'Outro' && <InputGroup label="Nome Personalizado" name="customProductName" value={input.customProductName} onChange={handleChange} type="text" />}
-                    <div className="grid grid-cols-2 gap-3">
-                        <InputGroup label="Qtd. do Lote (Peças)" name="batchSize" value={input.batchSize} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} />
-                        <InputGroup label="Pilotagem (Custo Total)" name="pilotingCost" value={input.pilotingCost} onChange={handleChange} type="number" prefix="R$" />
+      <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
+            <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
+                <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
+                    <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
+                    <div className="space-y-3">
+                        <InputGroup label="Tipo de Peça" name="productCategory" value={input.productCategory} onChange={handleChange} type="select" options={PRODUCT_CATEGORIES.map(cat => ({ label: cat, value: cat }))} />
+                        {input.productCategory === 'Outro' && <InputGroup label="Nome Personalizado" name="customProductName" value={input.customProductName} onChange={handleChange} type="text" />}
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputGroup label="Qtd. do Lote (Peças)" name="batchSize" value={input.batchSize} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} />
+                            <InputGroup label="Pilotagem (Custo Total)" name="pilotingCost" value={input.pilotingCost} onChange={handleChange} type="number" prefix="R$" />
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
-              <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Package className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">1. Matéria-Prima & Corte</h3></div>
-              <div className="grid grid-cols-2 gap-3">
-                  <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
-                  <InputGroup label="Rendimento" name="piecesPerKg" value={input.piecesPerKg} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
-                  
-                  <InputGroup label="Preço Ribana" name="ribanaPricePerKg" value={input.ribanaPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
-                  <InputGroup label="Rend. Ribana" name="ribanaYield" value={input.ribanaYield} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
-
-                  <InputGroup label="Larg. Malha (m)" name="fabricWidth" value={input.fabricWidth || 0} onChange={handleChange} type="number" step="0.01" suffix="m" />
-                  <InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" />
-                  
-                  <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
-                      <div className="flex flex-col gap-2">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase">Método de Corte</label>
-                          <div className="flex gap-2 mb-2">
-                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_RISCO'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_RISCO')}>Manual (s/ papel)</button>
-                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_PLOTTER')}>Plotter (c/ papel)</button>
-                          </div>
-                      </div>
-                      
-                      {input.cuttingType === 'MANUAL_PLOTTER' && (
-                          <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3 animate-fade-in">
-                              <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" suffix="m" />
-                              <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
-                          </div>
-                      )}
-                  </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
-              <div className="flex items-center justify-between mb-4 border-b border-sow-border pb-2">
-                  <div className="flex items-center gap-2 text-sow-black"><Layers className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">2. Beneficiamento</h3></div>
-                  <button onClick={addEmbellishment} className="text-sow-green hover:text-sow-black transition-colors"><PlusCircle className="w-5 h-5" /></button>
-              </div>
-              <div className="space-y-3">
-                  {input.embellishments.length === 0 && <p className="text-xs text-sow-grey italic text-center py-3 bg-sow-light rounded-lg">Peça Lisa (Sem estampas).</p>}
-                  {input.embellishments.map((item, index) => (
-                      <div key={item.id} className="bg-sow-light p-3 rounded-lg border border-sow-border relative group">
-                          <button onClick={() => removeEmbellishment(item.id)} className="absolute top-2 right-2 text-sow-grey/50 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                          
-                          <div className="mb-3 pr-6">
-                              <label className="text-[11px] font-bold text-sow-grey uppercase block mb-1">Tipo</label>
-                              <select value={item.type} onChange={(e) => updateEmbellishment(item.id, 'type', e.target.value)} className="w-full bg-sow-white border border-sow-border text-sm rounded-lg p-2 font-bold">
-                                  <option value="SILK">Silk Screen</option><option value="DTF">DTF (Digital)</option><option value="BORDADO">Bordado</option>
-                              </select>
-                          </div>
-
-                          {item.type === 'DTF' ? (
-                              <div className="bg-purple-50 border border-purple-200 rounded p-3">
-                                  <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-3 border-b border-purple-200 pb-2">
-                                      <CheckCircle2 className="w-4 h-4" /> <span>Integrado com Otimizador</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-3 mb-2">
-                                      <div>
-                                          <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Impressão (Total Lote)</label>
-                                          <div className="relative">
-                                              <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
-                                              <input type="number" value={dtfPrintManual || ''} onChange={(e) => setDtfPrintManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
-                                          </div>
-                                      </div>
-                                      <div>
-                                          <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Aplicação (Total Lote)</label>
-                                          <div className="relative">
-                                              <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
-                                              <input type="number" value={dtfAppManual || ''} onChange={(e) => setDtfAppManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div className="text-[10px] text-purple-400 italic text-center">Copie os valores do painel ao lado</div>
+                <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
+                  <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Package className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">1. Matéria-Prima & Corte</h3></div>
+                  <div className="grid grid-cols-2 gap-3">
+                      <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
+                      <InputGroup label="Rendimento" name="piecesPerKg" value={input.piecesPerKg} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
+                      <InputGroup label="Preço Ribana" name="ribanaPricePerKg" value={input.ribanaPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
+                      <InputGroup label="Rend. Ribana" name="ribanaYield" value={input.ribanaYield} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
+                      <InputGroup label="Larg. Malha (m)" name="fabricWidth" value={input.fabricWidth || 0} onChange={handleChange} type="number" step="0.01" suffix="m" />
+                      <InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" />
+                      <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
+                          <div className="flex flex-col gap-2">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase">Método de Corte</label>
+                              <div className="flex gap-2 mb-2">
+                                  <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_RISCO'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_RISCO')}>Manual (s/ papel)</button>
+                                  <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_PLOTTER')}>Plotter (c/ papel)</button>
                               </div>
-                          ) : (
-                              item.type === 'SILK' ? (
-                                  <div className="grid grid-cols-2 gap-3">
-                                      <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', e.target.value)} type="number" step="1" />
-                                      <div className="flex items-center pt-5"><label className="flex gap-2 text-xs font-bold text-sow-grey"><input type="checkbox" checked={item.isRegraving || false} onChange={(e) => updateEmbellishment(item.id, 'isRegraving', e.target.checked)} /> Regravação?</label></div>
-                                  </div>
-                              ) : (
-                                  <div className="grid grid-cols-2 gap-3">
-                                      <InputGroup label="Milheiros" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', e.target.value)} type="number" step="1" />
-                                      <InputGroup label="Valor/Mil" name={`emb_cost_${item.id}`} value={item.embroideryCostPerThousand || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryCostPerThousand', parseFloat(e.target.value))} type="number" prefix="R$" />
-                                  </div>
-                              )
+                          </div>
+                          {input.cuttingType === 'MANUAL_PLOTTER' && (
+                              <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3 animate-fade-in">
+                                  <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" suffix="m" />
+                                  <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
+                              </div>
                           )}
                       </div>
-                  ))}
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
-               <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Truck className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">3. Confecção & Logística</h3></div>
-               <div className="grid grid-cols-2 gap-3">
-                   <InputGroup label="Costura (Un)" name="sewingCost" value={input.sewingCost} onChange={handleChange} type="number" prefix="R$" />
-                   <InputGroup label="Revisão/Acab." name="finishingCost" value={input.finishingCost} onChange={handleChange} type="number" prefix="R$" />
-                   
-                   <InputGroup label="Aviamentos (Un)" name="aviamentosCost" value={input.aviamentosCost} onChange={handleChange} type="number" prefix="R$" />
-                   <InputGroup label="Embalagem (Un)" name="packagingCost" value={input.packagingCost} onChange={handleChange} type="number" prefix="R$" />
-                   
-                   <div className="col-span-2 bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
-                       <InputGroup label="Logística (Entrada)" name="logisticsTotalCost" value={input.logisticsTotalCost} onChange={handleChange} type="number" prefix="R$" />
-                       <InputGroup label="Frete Saída (Cliente)" name="freightOutCost" value={input.freightOutCost} onChange={handleChange} type="number" prefix="R$" />
-                   </div>
-               </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl border-l-4 border-l-sow-green shadow-soft">
-               <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><TrendingUp className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">4. Estratégia</h3></div>
-               <InputGroup label="Margem Líquida Desejada" name="targetMargin" value={input.targetMargin} onChange={handleChange} type="number" suffix="%" />
-            </div>
-        </div>
-
-        <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
-            
-            {hasDTFSelection && (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 h-[600px] flex flex-col">
-                    <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                        <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2"><Printer className="w-4 h-4" /> Painel de Produção DTF</span>
-                        <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold">Modo Edição</span>
-                    </div>
-                    <div className="flex-1 relative">
-                        <div className="absolute inset-0 p-2">
-                            <DTFCalculator settings={settings} />
-                        </div>
-                    </div>
+                  </div>
                 </div>
-            )}
-
-            <div className="space-y-4">
-                {settingsChangedAlert && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-fade-in-down">
-                        <div className="flex gap-3">
-                            <div className="bg-blue-100 p-2 rounded-full h-fit">
-                                <RefreshCw className="w-4 h-4 text-blue-600 animate-spin-slow" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-blue-800">Taxas ou Custos Globais Atualizados!</h4>
-                                <p className="text-xs text-blue-600 mt-1">O cálculo de preço foi ajustado automaticamente para refletir as novas configurações.</p>
+                <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
+                  <div className="flex items-center justify-between mb-4 border-b border-sow-border pb-2">
+                      <div className="flex items-center gap-2 text-sow-black"><Layers className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">2. Beneficiamento</h3></div>
+                      <button onClick={addEmbellishment} className="text-sow-green hover:text-sow-black transition-colors"><PlusCircle className="w-5 h-5" /></button>
+                  </div>
+                  <div className="space-y-3">
+                      {input.embellishments.length === 0 && <p className="text-xs text-sow-grey italic text-center py-3 bg-sow-light rounded-lg">Peça Lisa (Sem estampas).</p>}
+                      {input.embellishments.map((item, index) => (
+                          <div key={item.id} className="bg-sow-light p-3 rounded-lg border border-sow-border relative group">
+                              <button onClick={() => removeEmbellishment(item.id)} className="absolute top-2 right-2 text-sow-grey/50 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                              <div className="mb-3 pr-6">
+                                  <label className="text-[11px] font-bold text-sow-grey uppercase block mb-1">Tipo</label>
+                                  <select value={item.type} onChange={(e) => updateEmbellishment(item.id, 'type', e.target.value)} className="w-full bg-sow-white border border-sow-border text-sm rounded-lg p-2 font-bold">
+                                      <option value="SILK">Silk Screen</option><option value="DTF">DTF (Digital)</option><option value="BORDADO">Bordado</option>
+                                  </select>
+                              </div>
+                              {item.type === 'DTF' ? (
+                                  <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                                      <div className="flex items-center gap-2 text-purple-700 font-bold text-xs mb-3 border-b border-purple-200 pb-2">
+                                          <CheckCircle2 className="w-4 h-4" /> <span>Integrado com Otimizador</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3 mb-2">
+                                          <div>
+                                              <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Impressão (Total Lote)</label>
+                                              <div className="relative">
+                                                  <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
+                                                  <input type="number" value={dtfPrintManual || ''} onChange={(e) => setDtfPrintManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
+                                              </div>
+                                          </div>
+                                          <div>
+                                              <label className="text-[10px] font-bold text-purple-800 uppercase block mb-1">Custo Aplicação (Total Lote)</label>
+                                              <div className="relative">
+                                                  <span className="absolute left-2 top-1.5 text-xs text-gray-500 font-bold">R$</span>
+                                                  <input type="number" value={dtfAppManual || ''} onChange={(e) => setDtfAppManual(parseFloat(e.target.value))} className="w-full pl-7 p-1.5 text-sm border border-purple-300 rounded font-bold text-gray-700 focus:outline-none focus:border-purple-500"/>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <div className="text-[10px] text-purple-400 italic text-center">Copie os valores do painel ao lado</div>
+                                  </div>
+                              ) : (
+                                  item.type === 'SILK' ? (
+                                      <div className="grid grid-cols-2 gap-3">
+                                          <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', e.target.value)} type="number" step="1" />
+                                          <div className="flex items-center pt-5"><label className="flex gap-2 text-xs font-bold text-sow-grey"><input type="checkbox" checked={item.isRegraving || false} onChange={(e) => updateEmbellishment(item.id, 'isRegraving', e.target.checked)} /> Regravação?</label></div>
+                                      </div>
+                                  ) : (
+                                      <div className="grid grid-cols-2 gap-3">
+                                          <InputGroup label="Milheiros" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', e.target.value)} type="number" step="1" />
+                                          <InputGroup label="Valor/Mil" name={`emb_cost_${item.id}`} value={item.embroideryCostPerThousand || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryCostPerThousand', parseFloat(e.target.value))} type="number" prefix="R$" />
+                                      </div>
+                                  )
+                              )}
+                          </div>
+                      ))}
+                  </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
+                   <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Truck className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">3. Confecção & Logística</h3></div>
+                   <div className="grid grid-cols-2 gap-3">
+                       <InputGroup label="Costura (Un)" name="sewingCost" value={input.sewingCost} onChange={handleChange} type="number" prefix="R$" />
+                       <InputGroup label="Revisão/Acab." name="finishingCost" value={input.finishingCost} onChange={handleChange} type="number" prefix="R$" />
+                       <InputGroup label="Aviamentos (Un)" name="aviamentosCost" value={input.aviamentosCost} onChange={handleChange} type="number" prefix="R$" />
+                       <InputGroup label="Embalagem (Un)" name="packagingCost" value={input.packagingCost} onChange={handleChange} type="number" prefix="R$" />
+                       <div className="col-span-2 bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
+                           <InputGroup label="Logística (Entrada)" name="logisticsTotalCost" value={input.logisticsTotalCost} onChange={handleChange} type="number" prefix="R$" />
+                           <InputGroup label="Frete Saída (Cliente)" name="freightOutCost" value={input.freightOutCost} onChange={handleChange} type="number" prefix="R$" />
+                       </div>
+                   </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border-l-4 border-l-sow-green shadow-soft">
+                   <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><TrendingUp className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">4. Estratégia</h3></div>
+                   <InputGroup label="Margem Líquida Desejada" name="targetMargin" value={input.targetMargin} onChange={handleChange} type="number" suffix="%" />
+                </div>
+            </div>
+            <div className="lg:col-span-7 h-full flex flex-col overflow-y-auto pb-24 px-1 scrollbar-thin">
+                {hasDTFSelection && (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 h-[600px] flex flex-col">
+                        <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2"><Printer className="w-4 h-4" /> Painel de Produção DTF</span>
+                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold">Modo Edição</span>
+                        </div>
+                        <div className="flex-1 relative">
+                            <div className="absolute inset-0 p-2">
+                                <DTFCalculator settings={settings} />
                             </div>
                         </div>
-                        <button onClick={() => setSettingsChangedAlert(false)} className="text-blue-400 hover:text-blue-600 transition-colors">
-                            <X className="w-4 h-4" />
-                        </button>
                     </div>
                 )}
-
-                <PriceCard result={result} productName={input.customProductName} category={input.productCategory} taxRegime={settings.taxRegime} />
-                <button onClick={handleExportXLS} className="w-full py-4 bg-white border border-sow-border hover:border-sow-green text-sow-black hover:text-sow-green font-montserrat font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-soft group mt-2"><Download className="w-5 h-5 text-sow-grey group-hover:text-sow-green transition-colors" /><span>Exportar Planilha (XLS)</span></button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
-                
-                <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col h-[400px]">
-                    <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-3">
-                        <PieIcon className="w-4 h-4 text-sow-green" />
-                        <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey tracking-wider">Composição do Preço</h3>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col justify-center overflow-y-auto pr-2 scrollbar-thin">
-                        {compositionData.length > 0 ? (
-                            compositionData.map((item, index) => {
-                                const percent = totalComposition > 0 ? (item.value / totalComposition) * 100 : 0;
-                                return (
-                                    <div key={index} className="mb-4 last:mb-0">
-                                        <div className="flex justify-between items-end mb-1">
-                                            <span className="text-[11px] font-bold text-gray-500 uppercase">{item.name}</span>
-                                            <div className="text-right">
-                                                <span className="text-xs font-bold text-sow-black block">{formatCurrency(item.value)}</span>
+                <div className="space-y-4">
+                    {settingsChangedAlert && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-fade-in-down">
+                            <div className="flex gap-3">
+                                <div className="bg-blue-100 p-2 rounded-full h-fit">
+                                    <RefreshCw className="w-4 h-4 text-blue-600 animate-spin-slow" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-blue-800">Taxas ou Custos Globais Atualizados!</h4>
+                                    <p className="text-xs text-blue-600 mt-1">O cálculo de preço foi ajustado automaticamente para refletir as novas configurações.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setSettingsChangedAlert(false)} className="text-blue-400 hover:text-blue-600 transition-colors">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                    <PriceCard result={result} productName={input.customProductName} category={input.productCategory} taxRegime={settings.taxRegime} />
+                    <button onClick={handleExportXLS} className="w-full py-4 bg-white border border-sow-border hover:border-sow-green text-sow-black hover:text-sow-green font-montserrat font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-soft group mt-2"><Download className="w-5 h-5 text-sow-grey group-hover:text-sow-green transition-colors" /><span>Exportar Planilha (XLS)</span></button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pb-6">
+                    <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col h-[400px]">
+                        <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-3">
+                            <PieIcon className="w-4 h-4 text-sow-green" />
+                            <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey tracking-wider">Composição do Preço</h3>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center overflow-y-auto pr-2 scrollbar-thin">
+                            {compositionData.length > 0 ? (
+                                compositionData.map((item, index) => {
+                                    const percent = totalComposition > 0 ? (item.value / totalComposition) * 100 : 0;
+                                    return (
+                                        <div key={index} className="mb-4 last:mb-0">
+                                            <div className="flex justify-between items-end mb-1">
+                                                <span className="text-[11px] font-bold text-gray-500 uppercase">{item.name}</span>
+                                                <div className="text-right">
+                                                    <span className="text-xs font-bold text-sow-black block">{formatCurrency(item.value)}</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full rounded-full transition-all duration-500" 
+                                                    style={{ width: `${percent}%`, backgroundColor: item.color }}
+                                                />
+                                            </div>
+                                            <div className="text-right mt-0.5">
+                                                <span className="text-[9px] font-bold text-gray-400">{percent.toFixed(1)}%</span>
                                             </div>
                                         </div>
-                                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full rounded-full transition-all duration-500" 
-                                                style={{ width: `${percent}%`, backgroundColor: item.color }}
-                                            />
-                                        </div>
-                                        <div className="text-right mt-0.5">
-                                            <span className="text-[9px] font-bold text-gray-400">{percent.toFixed(1)}%</span>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <p className="text-center text-gray-400 text-sm">Sem dados para exibir.</p>
-                        )}
+                                    );
+                                })
+                            ) : (
+                                <p className="text-center text-gray-400 text-sm">Sem dados para exibir.</p>
+                            )}
+                        </div>
                     </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col h-auto">
-                    <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-4 tracking-wider">Detalhamento Contábil</h3>
-                    <div className="w-full">
-                        <table className="w-full text-sm text-left"><tbody className="divide-y divide-sow-border font-montserrat font-medium text-sow-black">
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Matéria-Prima</td><td className="py-2 text-right">{result ? formatCurrency(result.materialUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Corte & Risco</td><td className="py-2 text-right">{result ? formatCurrency(result.plotterUnit + result.cuttingLaborUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Beneficiamento</td><td className="py-2 text-right">{result ? formatCurrency(result.processingUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Confecção</td><td className="py-2 text-right">{result ? formatCurrency(result.sewingUnit) : '-'}</td></tr>
-                            <tr className="bg-sow-light font-bold text-sow-black"><td className="py-2 pl-2 text-[11px] uppercase tracking-wide">Custo Industrial</td><td className="py-2 text-right pr-2">{result ? formatCurrency(result.industrialCostUnit) : '-'}</td></tr>
-                            <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Rateio Fixo</td><td className="py-2 text-right">{result ? formatCurrency(result.fixedOverheadUnit) : '-'}</td></tr>
-                            <tr className="border-t-2 border-sow-black font-bold text-base"><td className="py-3 pl-2 tracking-tight">CUSTO FINAL</td><td className="py-3 text-right pr-2">{result ? formatCurrency(result.totalProductionCost) : '-'}</td></tr>
-                        </tbody></table>
+                    <div className="bg-white rounded-xl p-6 border border-sow-border shadow-soft flex flex-col h-auto">
+                        <h3 className="text-xs font-helvetica font-bold uppercase text-sow-grey mb-4 tracking-wider">Detalhamento Contábil</h3>
+                        <div className="w-full">
+                            <table className="w-full text-sm text-left"><tbody className="divide-y divide-sow-border font-montserrat font-medium text-sow-black">
+                                <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Matéria-Prima</td><td className="py-2 text-right">{result ? formatCurrency(result.materialUnit) : '-'}</td></tr>
+                                <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Corte & Risco</td><td className="py-2 text-right">{result ? formatCurrency(result.plotterUnit + result.cuttingLaborUnit) : '-'}</td></tr>
+                                <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Beneficiamento</td><td className="py-2 text-right">{result ? formatCurrency(result.processingUnit) : '-'}</td></tr>
+                                <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Confecção</td><td className="py-2 text-right">{result ? formatCurrency(result.sewingUnit) : '-'}</td></tr>
+                                <tr className="bg-sow-light font-bold text-sow-black"><td className="py-2 pl-2 text-[11px] uppercase tracking-wide">Custo Industrial</td><td className="py-2 text-right pr-2">{result ? formatCurrency(result.industrialCostUnit) : '-'}</td></tr>
+                                <tr><td className="py-2 text-[11px] uppercase text-sow-grey tracking-wide">Rateio Fixo</td><td className="py-2 text-right">{result ? formatCurrency(result.fixedOverheadUnit) : '-'}</td></tr>
+                                <tr className="border-t-2 border-sow-black font-bold text-base"><td className="py-3 pl-2 tracking-tight">CUSTO FINAL</td><td className="py-3 text-right pr-2">{result ? formatCurrency(result.totalProductionCost) : '-'}</td></tr>
+                            </tbody></table>
+                        </div>
                     </div>
                 </div>
             </div>

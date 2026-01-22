@@ -1,4 +1,4 @@
-import type { ProductInput, SettingsData, CalculationResult } from '../types';
+import type { ProductInput, SettingsData, CalculationResult, ReverseEngineeringResult } from '../types';
 
 export const calculateScenario = (input: ProductInput, settings: SettingsData): CalculationResult => {
     const warnings: string[] = [];
@@ -31,22 +31,14 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     input.embellishments.forEach((item, index) => {
         let itemCost = 0;
         if (item.type === 'SILK') {
-            // CORREÇÃO SILK: Recálculo dinâmico baseado nas configurações para garantir atualização
-            // Define qual tabela usar (Pequena ou Grande)
             const table = item.silkSize === 'LARGE' ? settings.silkPrices.large : settings.silkPrices.small;
-            
-            // Garante número inteiro e mínimo de 1 cor
             const colors = Math.max(1, Math.floor(item.printColors || 1));
             const extraColors = Math.max(0, colors - 1);
 
-            // 1. Custo de Matrizes (Telas)
-            // Se for regravação usa preço menor, senão preço cheio. Multiplica pelo nº de cores.
             const screenUnitCost = item.isRegraving ? table.screenRemake : table.screenNew;
             const totalSetup = screenUnitCost * colors;
             const setupPerUnit = totalSetup / safeBatchSize;
 
-            // 2. Custo de Produção (Passadas/Tinta)
-            // Fórmula: Preço 1ª Cor + (Preço Cor Extra * Quantidade de Extras)
             const productionPerUnit = table.firstColor + (extraColors * table.extraColor);
 
             itemCost = setupPerUnit + productionPerUnit;
@@ -55,29 +47,23 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
                 warnings.push(`⚠️ TÉCNICA #${index + 1} (SILK): Lote pequeno encarece a tela.`);
             }
         } else if (item.type === 'BORDADO') {
-            // Garante inteiros para milheiros
             const stitches = Math.floor(item.embroideryStitchCount || 0);
             itemCost = stitches * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
-            // Lógica DTF Ajustada: Custo Zero se campos estiverem vazios
-            
             const applicationCost = input.batchSize > settings.serviceCosts.dtfWholesaleLimit 
                 ? settings.serviceCosts.dtfAppWholesale 
                 : settings.serviceCosts.dtfAppRetail;
 
-            // Se existe custo manual definido (mesmo que 0, se o campo foi usado)
             if (item.dtfManualUnitCost !== undefined) {
-                // Se o custo manual for maior que zero, ele já inclui a aplicação (somada no frontend)
-                // Se for 0, entendemos que o usuário limpou o campo, então não cobramos nada.
+                // Se o custo manual for > 0, usamos ele. Se for 0, é 0.
                 itemCost = item.dtfManualUnitCost > 0 ? item.dtfManualUnitCost : 0; 
             } else {
-                // Modo legado (Metragem)
                 const meters = item.dtfMetersUsed || 0;
                 if (meters > 0) {
                     const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
                     itemCost = printUnit + applicationCost;
                 } else {
-                    itemCost = 0; // Sem metragem, sem custo manual = Custo Zero.
+                    itemCost = 0; 
                 }
             }
         }
@@ -91,13 +77,11 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     const logisticsFuelPerUnit = input.logisticsTotalCost / safeBatchSize;
     const logisticsInUnit = logisticsFuelPerUnit + input.packagingCost + input.freightOutCost;
 
-    // 6. Pilotagem e Custos Finais
+    // 6. Pilotagem
     const pilotingUnit = input.pilotingCost / safeBatchSize;
 
     const industrialCostUnit = materialUnit + plotterUnit + cuttingLaborUnit + processingUnit + sewingUnit + logisticsInUnit + pilotingUnit;
-    
     const fixedOverheadUnit = settings.estimatedMonthlyProduction > 0 ? settings.monthlyFixedCosts / settings.estimatedMonthlyProduction : 0;
-    
     const totalProductionCost = industrialCostUnit + fixedOverheadUnit;
 
     let appliedTaxRate = settings.taxRegime === 'MEI' ? 0 : settings.defaultTaxRate;
@@ -131,34 +115,25 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     };
 };
 
-export const calculateReverse = (targetPrice: number, input: ProductInput, settings: SettingsData): CalculationResult => {
-    const warnings: string[] = [];
+export const calculateReverseEngineering = (
+  targetPrice: number, 
+  desiredMargin: number, 
+  settings: SettingsData
+): ReverseEngineeringResult => {
+    const taxRate = settings.taxRegime === 'MEI' ? 0 : settings.defaultTaxRate;
+    const feesRate = settings.defaultCardRate + settings.defaultMarketingRate + settings.defaultCommissionRate;
     
-    let appliedTaxRate = settings.taxRegime === 'MEI' ? 0 : settings.defaultTaxRate;
+    const taxesAmount = targetPrice * (taxRate / 100);
+    const feesAmount = targetPrice * (feesRate / 100);
+    const profitAmount = targetPrice * (desiredMargin / 100);
     
-    const taxesUnit = targetPrice * (appliedTaxRate / 100);
-    const cardFeesUnit = targetPrice * (settings.defaultCardRate / 100);
-    const marketingUnit = targetPrice * (settings.defaultMarketingRate / 100);
-    const commissionUnit = targetPrice * (settings.defaultCommissionRate / 100);
-    const netProfitUnit = targetPrice * (input.targetMargin / 100); 
-
-    const commercialExpensesUnit = taxesUnit + cardFeesUnit + marketingUnit + commissionUnit;
-
-    const maxProductionCost = targetPrice - commercialExpensesUnit - netProfitUnit;
-
-    if (maxProductionCost < 0) {
-        warnings.push("🔴 Preço Alvo inviável: Custos de venda superam o preço.");
-    }
-
+    const targetProductionCost = targetPrice - taxesAmount - feesAmount - profitAmount;
+    
     return {
-        materialUnit: 0, plotterUnit: 0, cuttingLaborUnit: 0, processingUnit: 0, 
-        sewingUnit: 0, logisticsInUnit: 0, fixedOverheadUnit: 0,
-        industrialCostUnit: 0,
-        totalProductionCost: maxProductionCost, 
-        suggestedSalePrice: targetPrice,
-        taxesUnit, cardFeesUnit, marketingUnit, commissionUnit, commercialExpensesUnit, netProfitUnit,
-        markup: maxProductionCost > 0 ? targetPrice / maxProductionCost : 0,
-        warnings
+        targetProductionCost: Math.max(0, targetProductionCost),
+        taxesAmount,
+        feesAmount,
+        profitAmount
     };
 };
 

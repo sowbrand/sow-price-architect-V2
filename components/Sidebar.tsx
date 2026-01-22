@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { LayoutDashboard, Calculator, Printer, Scale, Target, Settings } from 'lucide-react';
 import { CalculationMode } from '../types';
 
@@ -8,7 +8,6 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => {
-  // Definição dos itens do menu
   const menuItems = [
     { id: CalculationMode.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { id: CalculationMode.DTF, label: 'Calc. DTF', icon: Printer },
@@ -21,7 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full shrink-0 z-20">
       <div className="p-6 flex items-center justify-center">
-         {/* Espaço para logo se necessário */}
+         {/* Espaço para logo */}
       </div>
 
       <nav className="flex-1 px-4 space-y-2">
@@ -41,8 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, onNavigate }) => 
               }`}
             />
             <span>{item.label}</span>
-            
-            {/* Indicador de Ativo */}
             {currentMode === item.id && (
               <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sow-green" />
             )}

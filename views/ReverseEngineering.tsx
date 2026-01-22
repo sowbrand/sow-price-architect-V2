@@ -1,97 +1,124 @@
 import React, { useState, useEffect } from 'react';
-import { Target, ArrowDownRight, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
-import { calculateReverse, formatCurrency } from '../utils/pricingEngine';
-import { INITIAL_PRODUCT } from '../constants/defaults';
-import type { SettingsData, ProductInput, CalculationResult } from '../types';
+import { calculateReverseEngineering, formatCurrency } from '../utils/pricingEngine';
+import type { SettingsData, ReverseEngineeringResult } from '../types';
 
 interface ReverseEngineeringProps {
   settings: SettingsData;
 }
 
 export const ReverseEngineering: React.FC<ReverseEngineeringProps> = ({ settings }) => {
-    const [targetPrice, setTargetPrice] = useState<number>(89.90);
-    const [desiredMargin, setDesiredMargin] = useState<number>(20);
-    const [batchSize, setBatchSize] = useState<number>(100);
-    const [result, setResult] = useState<CalculationResult | null>(null);
+  const [targetPrice, setTargetPrice] = useState<number>(0);
+  const [desiredMargin, setDesiredMargin] = useState<number>(25);
+  const [result, setResult] = useState<ReverseEngineeringResult | null>(null);
 
-    useEffect(() => {
-        // Cria um produto "dummy" apenas com os dados necessários para a reversa
-        const dummyInput: ProductInput = { ...INITIAL_PRODUCT, batchSize, targetMargin: desiredMargin };
-        setResult(calculateReverse(targetPrice, dummyInput, settings));
-    }, [targetPrice, desiredMargin, batchSize, settings]);
+  useEffect(() => {
+    if (targetPrice > 0) {
+      setResult(calculateReverseEngineering(targetPrice, desiredMargin, settings));
+    } else {
+      setResult(null);
+    }
+  }, [targetPrice, desiredMargin, settings]);
 
-    const blockDecimals = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
-    };
+  return (
+    // WRAPPER PADRÃO ADICIONADO AQUI
+    <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
+      <div className="mb-6">
+        <h2 className="text-2xl font-helvetica font-bold text-sow-black flex items-center gap-2">
+          <Target className="w-6 h-6 text-sow-green" /> Engenharia Reversa
+        </h2>
+        <p className="text-sm text-sow-grey">Defina o preço de venda alvo e descubra o custo máximo de produção permitido.</p>
+      </div>
 
-    return (
-        <div className="h-full flex flex-col font-montserrat overflow-hidden">
-            <div className="mb-6 shrink-0">
-                <div className="flex items-center gap-3 text-sow-black mb-1">
-                    <div className="p-2 bg-sow-green/10 rounded-lg"><Target className="w-6 h-6 text-sow-green" /></div>
-                    <h2 className="text-2xl font-helvetica font-bold tracking-tight">Engenharia Reversa</h2>
-                </div>
-                <p className="text-sow-grey text-sm font-medium">Defina o preço de venda alvo e descubra o custo máximo de produção permitido.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Inputs */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
+            <h3 className="font-helvetica font-bold text-sm uppercase tracking-wider text-sow-black mb-4 border-b border-sow-border pb-2">Parâmetros do Alvo</h3>
+            <div className="space-y-4">
+              <InputGroup 
+                label="Preço de Venda Alvo (R$)" 
+                name="targetPrice" 
+                value={targetPrice} 
+                onChange={(e) => setTargetPrice(parseFloat(e.target.value) || 0)} 
+                type="number" 
+                prefix="R$"
+                className="text-lg font-bold"
+              />
+              <div>
+                <InputGroup 
+                  label="Margem Líquida Desejada (%)" 
+                  name="desiredMargin" 
+                  value={desiredMargin} 
+                  onChange={(e) => setDesiredMargin(parseFloat(e.target.value) || 0)} 
+                  type="number" 
+                  suffix="%"
+                />
+                <p className="text-xs text-sow-grey mt-1">Recomendado: entre 15% e 35% para moda.</p>
+              </div>
             </div>
+          </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-                {/* Coluna de Inputs */}
-                <div className="lg:col-span-4 h-full min-h-0 flex flex-col">
-                     <div className="bg-white rounded-xl border border-sow-border shadow-soft overflow-hidden flex-1 flex flex-col">
-                        <div className="p-4 border-b border-sow-border bg-sow-light flex items-center justify-between">
-                            <h3 className="font-helvetica font-bold text-sow-black uppercase tracking-wider text-sm">Parâmetros do Alvo</h3>
-                        </div>
-                        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                             <div className="bg-sow-green/5 p-4 rounded-xl border border-sow-green/20">
-                                <InputGroup label="Preço de Venda Alvo (R$)" name="targetPrice" value={targetPrice} onChange={(e) => setTargetPrice(parseFloat(e.target.value) || 0)} type="number" prefix="R$" />
-                                <p className="text-xs text-sow-green mt-2 flex items-center gap-1 font-medium"><ArrowDownRight className="w-3 h-3" /> Quanto o mercado paga?</p>
-                            </div>
-                             <div className="space-y-4 pt-2">
-                                <InputGroup label="Margem Líquida Desejada" name="desiredMargin" value={desiredMargin} onChange={(e) => setDesiredMargin(parseFloat(e.target.value) || 0)} type="number" suffix="%" />
-                                <InputGroup label="Tamanho do Lote (Diluição)" name="batchSize" value={batchSize} onChange={(e) => setBatchSize(parseFloat(e.target.value) || 0)} type="number" step="1" min="1" onKeyDown={blockDecimals} />
-                            </div>
-                        </div>
-                     </div>
-                </div>
-
-                {/* Coluna de Resultados (Com Destaque Chamativo) */}
-                <div className="lg:col-span-8 h-full flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
-                    {/* TARGET COST CHAMATIVO */}
-                    <div className="bg-white rounded-xl border-2 border-sow-green shadow-lg relative overflow-hidden shrink-0 p-8 flex flex-col items-center text-center">
-                        <TrendingUp className="w-16 h-16 text-sow-green/20 absolute top-4 left-4" />
-                        <Target className="w-16 h-16 text-sow-green/20 absolute bottom-4 right-4" />
-                        
-                        <h3 className="font-helvetica font-bold uppercase tracking-widest text-lg text-sow-grey mb-6 relative z-10">
-                            Target Cost (Teto de Produção)
-                        </h3>
-                        
-                        <div className="flex flex-col items-center relative z-10">
-                            <span className="text-sow-green font-helvetica font-bold text-7xl lg:text-8xl tracking-tighter drop-shadow-sm">
-                                {result ? formatCurrency(result.totalProductionCost) : 'R$ 0,00'}
-                            </span>
-                            <p className="text-sow-grey font-montserrat font-medium mt-4 max-w-md leading-relaxed">
-                                Para vender a <strong className="text-sow-black">{formatCurrency(targetPrice)}</strong> e lucrar <strong className="text-sow-black">{desiredMargin}%</strong>, seu custo industrial final <strong>não pode ultrapassar</strong> este valor.
-                            </p>
-                        </div>
-                         <div className="absolute top-0 inset-x-0 h-2 bg-sow-green"></div>
-                    </div>
-
-                    {/* Detalhamento das Deduções */}
-                    <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 min-h-[300px] flex flex-col">
-                        <h4 className="text-xs font-helvetica font-bold text-sow-grey uppercase mb-6 tracking-wider">Detalhamento das Deduções do Preço Alvo</h4>
-                        <div className="w-full flex-1">
-                             <table className="w-full text-sm text-left"><tbody className="divide-y divide-sow-border font-montserrat font-medium text-sow-black">
-                                <tr className="bg-sow-light"><td className="py-3 pl-3 font-bold">Preço Venda Alvo</td><td className="py-3 text-right pr-3 font-bold">{formatCurrency(targetPrice)}</td></tr>
-                                <tr><td className="py-2 pl-3 text-sow-grey text-xs uppercase flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-400"></span> Impostos ({settings.defaultTaxRate}%)</td><td className="py-2 text-right pr-3 text-red-500">- {result ? formatCurrency(result.taxesUnit) : '-'}</td></tr>
-                                <tr><td className="py-2 pl-3 text-sow-grey text-xs uppercase flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-400"></span> Taxas Cartão/Mkt ({settings.defaultCardRate + settings.defaultMarketingRate}%)</td><td className="py-2 text-right pr-3 text-red-500">- {result ? formatCurrency(result.cardFeesUnit + result.marketingUnit) : '-'}</td></tr>
-                                 <tr><td className="py-2 pl-3 text-sow-grey text-xs uppercase flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-sow-green"></span> Margem Líquida Desejada ({desiredMargin}%)</td><td className="py-2 text-right pr-3 text-sow-green font-bold">- {result ? formatCurrency(result.netProfitUnit) : '-'}</td></tr>
-                                <tr className="border-t-2 border-sow-black font-helvetica font-bold text-base text-sow-green"><td className="py-4 pl-3 uppercase tracking-tight">SOBRA PARA PRODUÇÃO (TARGET)</td><td className="py-4 text-right pr-3">{result ? formatCurrency(result.totalProductionCost) : '-'}</td></tr>
-                            </tbody></table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <div className="bg-sow-light p-4 rounded-xl border border-sow-border text-sm text-sow-grey">
+            <p>O cálculo considera o regime tributário <strong>{settings.taxRegime}</strong> e as taxas de cartão/marketing definidas nas configurações.</p>
+          </div>
         </div>
-    );
+
+        {/* Resultados */}
+        <div className="lg:col-span-8">
+          {result ? (
+            <div className="space-y-6">
+              {/* Card Principal - Target Cost */}
+              <div className="bg-white p-8 rounded-2xl border-2 border-sow-green shadow-lg text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-2 bg-sow-green"></div>
+                <h3 className="text-sm font-bold text-sow-grey uppercase tracking-widest mb-2">Target Cost (Teto de Produção)</h3>
+                <div className="text-6xl font-helvetica font-extrabold text-sow-green mb-2">
+                  {formatCurrency(result.targetProductionCost)}
+                </div>
+                <p className="text-sow-black font-medium">
+                  Este é o custo máximo total (Indústria + Rateio) para atingir sua meta.
+                </p>
+              </div>
+
+              {/* Detalhamento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
+                  <h3 className="font-bold text-sm uppercase text-sow-black mb-4 border-b pb-2 flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-500" /> Descontos do Preço Alvo
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between"><span className="text-sow-grey">Impostos ({settings.taxRegime}):</span> <span className="font-bold">{formatCurrency(result.taxesAmount)}</span></div>
+                    <div className="flex justify-between"><span className="text-sow-grey">Taxas (Cartão/Mkt/Comissão):</span> <span className="font-bold">{formatCurrency(result.feesAmount)}</span></div>
+                    <div className="flex justify-between pt-2 border-t"><span className="text-sow-grey font-bold">Margem de Lucro ({desiredMargin}%):</span> <span className="font-bold text-sow-green">{formatCurrency(result.profitAmount)}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
+                  <h3 className="font-bold text-sm uppercase text-sow-black mb-4 border-b pb-2 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-sow-green" /> Composição do Teto
+                  </h3>
+                   <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center bg-sow-light p-2 rounded">
+                        <span className="text-sow-black font-bold">Custo Teto Total:</span>
+                        <span className="font-bold text-lg">{formatCurrency(result.targetProductionCost)}</span>
+                    </div>
+                     <div className="flex justify-between pl-2"><span className="text-sow-grey">(-) Rateio Fixo Estimado:</span> <span>{formatCurrency(settings.monthlyFixedCosts / settings.estimatedMonthlyProduction)}</span></div>
+                    <div className="flex justify-between pt-2 border-t pl-2"><span className="text-sow-black font-bold">Disponível p/ Custo Industrial:</span> <span className="font-bold text-sow-green">{formatCurrency(result.targetProductionCost - (settings.monthlyFixedCosts / settings.estimatedMonthlyProduction))}</span></div>
+                     <p className="text-xs text-sow-grey mt-2 italic">Quanto você pode gastar com Tecido, Costura, Estampa, etc.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center bg-white rounded-xl border border-sow-border shadow-soft text-sow-grey p-12 opacity-70">
+              <Target className="w-16 h-16 mb-4 text-sow-green/50" />
+              <p className="text-lg font-bold">Defina um Preço Alvo</p>
+              <p className="text-sm">Preencha o valor no painel ao lado para calcular o teto de custo.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };

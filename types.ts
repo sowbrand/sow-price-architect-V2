@@ -53,7 +53,7 @@ export interface Embellishment {
   embroideryStitchCount?: number; 
   embroideryCostPerThousand?: number;
   
-  // Campos DTF (NOVO CAMPO DE CUSTO MANUAL PARA EVITAR CONFLITO)
+  // Campos DTF
   dtfMetersUsed?: number; 
   dtfManualUnitCost?: number; // Custo de impressão manual unitário
   printUnitCost?: number;
@@ -119,6 +119,13 @@ export interface CalculationResult {
   netProfitUnit: number;
   markup: number;
   warnings: string[];
+}
+
+export interface ReverseEngineeringResult {
+  targetProductionCost: number;
+  taxesAmount: number;
+  feesAmount: number;
+  profitAmount: number;
 }
 
 export interface DTFResultData {
