@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { INITIAL_PRODUCT } from '../constants/defaults';
@@ -11,14 +11,14 @@ interface ComparatorProps {
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
-  // Inicializa dois cenários
+  // Inicializa dois cenários independentes
   const [inputA, setInputA] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário A' });
   const [inputB, setInputB] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário B' });
 
   const [resultA, setResultA] = useState<CalculationResult | null>(null);
   const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
-  // --- MEMÓRIA DE DADOS (Para persistência ao trocar abas) ---
+  // --- MEMÓRIA DE DADOS (Persistência ao trocar botões) ---
   // Cenário A
   const [memSilkColorsA, setMemSilkColorsA] = useState(1);
   const [memDtfCostA, setMemDtfCostA] = useState(0);
@@ -50,7 +50,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
       return input.embellishments[0].type;
   };
 
-  // Função INTELIGENTE para trocar estampa mantendo os dados salvos
+  // Função INTELIGENTE para trocar estampa mantendo os dados salvos (Memória)
   const handleEmbellishmentChange = (
     scenario: 'A' | 'B',
     type: 'NONE' | 'SILK' | 'DTF'
@@ -69,23 +69,22 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             id: `comp_silk_${scenario}`, 
             type: 'SILK', 
             silkSize: 'SMALL', 
-            printColors: savedColors, // Usa valor da memória
+            printColors: savedColors, // Usa valor da memória (ex: 2 cores)
             isRegraving: false 
         });
       } else if (type === 'DTF') {
         newEmbellishments.push({ 
             id: `comp_dtf_${scenario}`, 
             type: 'DTF', 
-            dtfManualUnitCost: savedDtfCost // Usa valor da memória
+            dtfManualUnitCost: savedDtfCost // Usa valor da memória (ex: R$ 12)
         });
       }
-      // Se for NONE, array fica vazio
       
       return { ...prev, embellishments: newEmbellishments as any };
     });
   };
 
-  // Função para atualizar valores e SALVAR NA MEMÓRIA
+  // Função para atualizar valores e SALVAR NA MEMÓRIA IMEDIATAMENTE
   const updateEmbellishmentValue = (
     scenario: 'A' | 'B',
     field: 'printColors' | 'dtfManualUnitCost',
@@ -93,7 +92,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   ) => {
     const setInput = scenario === 'A' ? setInputA : setInputB;
 
-    // 1. Atualiza a memória
+    // 1. Atualiza a memória para não perder ao trocar de aba
     if (scenario === 'A') {
         if (field === 'printColors') setMemSilkColorsA(value);
         if (field === 'dtfManualUnitCost') setMemDtfCostA(value);
@@ -102,7 +101,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
         if (field === 'dtfManualUnitCost') setMemDtfCostB(value);
     }
 
-    // 2. Atualiza o input atual para recálculo imediato
+    // 2. Atualiza o input atual para recálculo do preço
     setInput(prev => {
         const updated = [...prev.embellishments];
         if (updated.length > 0) {
@@ -112,22 +111,22 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Dados para o gráfico
+  // Dados para o gráfico (Forçando Numbers para evitar erros)
   const chartData = [
     { 
         name: 'Custo Prod.', 
-        A: resultA?.totalProductionCost || 0, 
-        B: resultB?.totalProductionCost || 0 
+        A: Number(resultA?.totalProductionCost || 0), 
+        B: Number(resultB?.totalProductionCost || 0) 
     },
     { 
         name: 'Preço Venda', 
-        A: resultA?.suggestedSalePrice || 0, 
-        B: resultB?.suggestedSalePrice || 0 
+        A: Number(resultA?.suggestedSalePrice || 0), 
+        B: Number(resultB?.suggestedSalePrice || 0) 
     },
     { 
         name: 'Lucro Liq.', 
-        A: resultA?.netProfitUnit || 0, 
-        B: resultB?.netProfitUnit || 0 
+        A: Number(resultA?.netProfitUnit || 0), 
+        B: Number(resultB?.netProfitUnit || 0) 
     },
   ];
 
@@ -175,7 +174,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
               ))}
             </div>
 
-            {/* Inputs com Memória */}
+            {/* Inputs com Memória A */}
             {getActiveType(inputA) === 'SILK' && (
                 <div className="bg-gray-50 p-2 rounded border border-gray-200 animate-fade-in">
                     <InputGroup label="Nº de Cores" name="colorsA" value={inputA.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('A', 'printColors', parseInt(e.target.value))} type="number" step="1" />
@@ -205,29 +204,30 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[350px]">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
                 
-                <div className="w-full h-[250px]">
+                {/* GRÁFICO CORRIGIDO: Altura Fixa no Pai e Dados Numéricos */}
+                <div className="w-full h-[250px] relative">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} barGap={0} barSize={35} margin={{top: 10, right: 10, left: -25, bottom: 0}}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <BarChart data={chartData} barGap={5} barSize={40} margin={{top: 20, right: 30, left: 20, bottom: 5}}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                             <XAxis 
                                 dataKey="name" 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fontSize: 10, fontFamily: 'Montserrat', fill: '#9ca3af', dy: 10}} 
+                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#6b7280', dy: 10}} 
                             />
                             <YAxis 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fontSize: 10, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
+                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
                                 tickFormatter={(value) => `R$${value}`}
                             />
                             <Tooltip 
-                                cursor={{fill: '#f9fafb'}}
-                                contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
+                                cursor={{fill: '#f3f4f6'}}
+                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
                                 formatter={(val: number) => [formatCurrency(val), '']}
                             />
-                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} animationDuration={1000} />
-                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} animationDuration={1000} />
+                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -294,7 +294,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
               ))}
             </div>
 
-            {/* Inputs com Memória */}
+            {/* Inputs com Memória B */}
             {getActiveType(inputB) === 'SILK' && (
                 <div className="bg-green-50 p-2 rounded border border-green-100 animate-fade-in">
                     <InputGroup label="Nº de Cores" name="colorsB" value={inputB.embellishments[0]?.printColors || 1} onChange={(e) => updateEmbellishmentValue('B', 'printColors', parseInt(e.target.value))} type="number" step="1" />
