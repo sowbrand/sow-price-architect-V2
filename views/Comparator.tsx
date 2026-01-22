@@ -97,29 +97,32 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Tratamento de Dados Seguro para o Gráfico
-  const safeVal = (val: number | undefined) => (typeof val === 'number' && !isNaN(val) ? val : 0);
+  // Garante que os dados sejam números puros para o gráfico
+  const safeNumber = (val: any) => {
+      const num = Number(val);
+      return isNaN(num) ? 0 : num;
+  };
 
   const chartData = [
     { 
         name: 'Custo Prod.', 
-        A: safeVal(resultA?.totalProductionCost), 
-        B: safeVal(resultB?.totalProductionCost) 
+        A: safeNumber(resultA?.totalProductionCost), 
+        B: safeNumber(resultB?.totalProductionCost) 
     },
     { 
         name: 'Preço Venda', 
-        A: safeVal(resultA?.suggestedSalePrice), 
-        B: safeVal(resultB?.suggestedSalePrice) 
+        A: safeNumber(resultA?.suggestedSalePrice), 
+        B: safeNumber(resultB?.suggestedSalePrice) 
     },
     { 
         name: 'Lucro Liq.', 
-        A: safeVal(resultA?.netProfitUnit), 
-        B: safeVal(resultB?.netProfitUnit) 
+        A: safeNumber(resultA?.netProfitUnit), 
+        B: safeNumber(resultB?.netProfitUnit) 
     },
   ];
 
-  const profitA = safeVal(resultA?.netProfitUnit);
-  const profitB = safeVal(resultB?.netProfitUnit);
+  const profitA = safeNumber(resultA?.netProfitUnit);
+  const profitB = safeNumber(resultB?.netProfitUnit);
   const winner = profitA > profitB ? 'A' : 'B';
   const diff = Math.abs(profitA - profitB);
 
@@ -195,45 +198,47 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
 
         {/* === GRÁFICO CENTRAL & VEREDITO === */}
         <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center">
+            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center min-h-[400px]">
                 <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
                 
-                {/* SOLUÇÃO GRÁFICO: DIV COM ALTURA FIXA E RÍGIDA */}
-                <div className="w-full h-80 bg-white">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                            data={chartData} 
-                            margin={{top: 20, right: 30, left: 20, bottom: 20}}
-                            barGap={10}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis 
-                                dataKey="name" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af', dy: 10}} 
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
-                                tickFormatter={(value) => `R$${value}`}
-                            />
-                            <Tooltip 
-                                cursor={{fill: '#f9fafb'}}
-                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
-                                formatter={(val: number) => [formatCurrency(val), '']}
-                            />
-                            <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Montserrat' }} />
-                            
-                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                {/* SOLUÇÃO GRÁFICO: USO DE CONTAINER ABSOLUTO PARA FORÇAR RENDERIZAÇÃO */}
+                <div style={{ width: '100%', height: '300px', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart 
+                                data={chartData} 
+                                margin={{top: 20, right: 30, left: 20, bottom: 5}}
+                                barGap={8}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#6b7280', dy: 10}} 
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
+                                    tickFormatter={(value) => `R$${value}`}
+                                />
+                                <Tooltip 
+                                    cursor={{fill: '#f9fafb'}}
+                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
+                                    formatter={(val: number) => [formatCurrency(val), '']}
+                                />
+                                <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Montserrat' }} />
+                                
+                                <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
+                                <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
                 <div className="flex justify-center mt-4 border-t border-gray-100 pt-4">
-                    {/* Legenda manual removida, pois o componente Legend do Recharts já resolve melhor */}
+                    {/* Legenda automática gerenciada pelo Recharts */}
                 </div>
             </div>
 
