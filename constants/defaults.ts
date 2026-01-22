@@ -1,56 +1,56 @@
 import { SettingsData } from '../types';
 
-// Valores extraídos da Tabela de Preços 2026 (Silk Screen)
+// Valores extraídos da Tabela de Preços Atualizada (Silk Screen)
 export const DEFAULT_SILK_PRICES = {
   small: { 
-    firstColor: 1.35,   // 1ª Cor (Estampa Pequena)
-    extraColor: 0.35,   // Cor Adicional
-    screenNew: 55.00,   // Tela Nova
-    screenRemake: 35.00 // Regravação
+    firstColor: 4.50,   
+    extraColor: 1.50,   
+    screenNew: 35.00,   
+    screenRemake: 25.00 
   },
   large: { 
-    firstColor: 2.00,   // 1ª Cor (Estampa Grande)
-    extraColor: 0.50,   // Cor Adicional
-    screenNew: 90.00,   // Tela Nova
-    screenRemake: 45.00 // Regravação
+    firstColor: 6.50,   
+    extraColor: 2.50,   
+    screenNew: 55.00,   
+    screenRemake: 40.00 
   }
 };
 
-// Custos de Serviços Terceirizados (Costura, Corte, DTF)
+// Custos de Serviços Terceirizados (Base para Reset)
 export const DEFAULT_SERVICE_COSTS = {
-  cuttingManual: 0.70,     // R$ 0,70 por peça (Corte Manual)
-  cuttingPlotter: 0.55,    // R$ 0,55 por peça (Corte Plotter)
-  plotterPaper: 5.50,      // R$ 5,50 por metro linear (Papel)
-  sewingStandard: 4.75,    // R$ 4,75 (Costura Ombro a Ombro)
-  dtfPrintMeter: 60.00,    // R$ 60,00 (Metro impressão DTF)
-  dtfApplication: 4.00     // R$ 4,00 (Aplicação DTF)
+  cuttingManual: 1.50,     
+  cuttingPlotter: 0.80,    
+  plotterPaper: 5.70,      // Atualizado R$ 5,70
+  sewingStandard: 4.75,    // Atualizado R$ 4,75
+  dtfPrintMeter: 60.00,    
+  dtfApplication: 4.00     
 };
 
 // Configurações Iniciais Completas
 export const INITIAL_SETTINGS: SettingsData = {
-  monthlyFixedCosts: 15000,
+  monthlyFixedCosts: 2000,
   estimatedMonthlyProduction: 1000,
-  taxRegime: 'SIMPLES',
-  defaultTaxRate: 10,
-  defaultCardRate: 4,
+  taxRegime: 'MEI',
+  defaultTaxRate: 4,
+  meiDasTax: 75.00,
+  defaultCardRate: 3.5,
   defaultMarketingRate: 5,
   defaultCommissionRate: 0,
-  // Aqui injetamos os preços padrão
   silkPrices: DEFAULT_SILK_PRICES,
   serviceCosts: DEFAULT_SERVICE_COSTS
 };
 
-// Produto Inicial Padrão (Reset)
+// Produto Inicial Padrão (Reset) - ATUALIZADO ETAPA 1
 export const INITIAL_PRODUCT: any = { 
   productCategory: 'Camiseta Casual',
   customProductName: '',
   
   // Matéria Prima
-  fabricPricePerKg: 65.00,
-  piecesPerKg: 3.2,
-  lossPercentage: 8,
+  fabricPricePerKg: 60.00, // Atualizado R$ 60,00
+  piecesPerKg: 3.5,        // Atualizado 3.5
+  lossPercentage: 10,      // Atualizado 10%
   
-  // Corte (Padrão Plotter)
+  // Corte
   cuttingType: 'PLOTTER',
   plotterMetersTotal: 0,
   plotterFreight: 0,
@@ -59,15 +59,15 @@ export const INITIAL_PRODUCT: any = {
   // Beneficiamento
   embellishments: [],
   
-  // Costura (Puxa valor padrão do banco)
-  sewingCost: DEFAULT_SERVICE_COSTS.sewingStandard, 
-  finishingCost: 1.00,
-  packagingCost: 1.20,
+  // Costura 
+  sewingCost: DEFAULT_SERVICE_COSTS.sewingStandard, // Vai puxar 4.75
+  finishingCost: 0.00, // Zerado conforme solicitado
+  packagingCost: 0.00, // Zerado conforme solicitado
   
   // Logística
-  logisticsTotalCost: 50.00,
+  logisticsTotalCost: 0.00,
   freightOutCost: 0,
   
-  batchSize: 100,
-  targetMargin: 25,
+  batchSize: 50, // Lote padrão seguro
+  targetMargin: 30 // Margem padrão 30%
 };
