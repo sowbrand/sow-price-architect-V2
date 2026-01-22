@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, CheckCircle2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { TrendingUp, CheckCircle2, DollarSign, PieChart } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import { calculateScenario, formatCurrency } from '../utils/pricingEngine';
 import { INITIAL_PRODUCT } from '../constants/defaults';
@@ -11,20 +10,18 @@ interface ComparatorProps {
 }
 
 export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
-  // Inicialização dos Cenários
   const [inputA, setInputA] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário A' });
   const [inputB, setInputB] = useState<ProductInput>({ ...INITIAL_PRODUCT, customProductName: 'Cenário B' });
 
   const [resultA, setResultA] = useState<CalculationResult | null>(null);
   const [resultB, setResultB] = useState<CalculationResult | null>(null);
 
-  // Memória para persistência de dados ao trocar abas
+  // Memória de Dados
   const [memSilkColorsA, setMemSilkColorsA] = useState(1);
   const [memDtfCostA, setMemDtfCostA] = useState(0);
   const [memSilkColorsB, setMemSilkColorsB] = useState(1);
   const [memDtfCostB, setMemDtfCostB] = useState(0);
 
-  // Cálculos automáticos
   useEffect(() => {
     setResultA(calculateScenario(inputA, settings));
   }, [inputA, settings]);
@@ -33,7 +30,6 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     setResultB(calculateScenario(inputB, settings));
   }, [inputB, settings]);
 
-  // Manipuladores de Input
   const handleChange = (
     setInput: React.Dispatch<React.SetStateAction<ProductInput>>,
     field: keyof ProductInput,
@@ -43,9 +39,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
   };
 
   const blockDecimals = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) {
-      e.preventDefault();
-    }
+    if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
   };
 
   const getActiveType = (input: ProductInput) => {
@@ -106,34 +100,46 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
     });
   };
 
-  // Sanitização de dados para o gráfico
-  const safeVal = (val: number | undefined | null) => {
-      const num = Number(val);
-      return isNaN(num) ? 0 : num;
-  };
-
-  const chartData = [
-    { 
-        name: 'Custo Prod.', 
-        A: safeVal(resultA?.totalProductionCost), 
-        B: safeVal(resultB?.totalProductionCost) 
-    },
-    { 
-        name: 'Preço Venda', 
-        A: safeVal(resultA?.suggestedSalePrice), 
-        B: safeVal(resultB?.suggestedSalePrice) 
-    },
-    { 
-        name: 'Lucro Liq.', 
-        A: safeVal(resultA?.netProfitUnit), 
-        B: safeVal(resultB?.netProfitUnit) 
-    },
-  ];
-
-  const profitA = safeVal(resultA?.netProfitUnit);
-  const profitB = safeVal(resultB?.netProfitUnit);
+  // Cálculos para o Veredito
+  const profitA = resultA?.netProfitUnit || 0;
+  const profitB = resultB?.netProfitUnit || 0;
   const winner = profitA > profitB ? 'A' : 'B';
   const diff = Math.abs(profitA - profitB);
+  const isTie = Math.abs(diff) < 0.01;
+
+  // --- NOVO COMPONENTE VISUAL: BARRA DE PROGRESSO COMPARATIVA ---
+  const ComparativeBar = ({ label, valA, valB, format = true, inverse = false }: { label: string, valA: number, valB: number, format?: boolean, inverse?: boolean }) => {
+    const max = Math.max(valA, valB) || 1;
+    const pctA = (valA / max) * 100;
+    const pctB = (valB / max) * 100;
+    
+    // Cores: Se inverse=true (Custo), menor é melhor (Verde). Se inverse=false (Lucro), maior é melhor.
+    // Mas aqui vamos manter fixo: A = Cinza, B = Verde Sowbrand para identidade visual
+    
+    return (
+      <div className="mb-5">
+        <div className="flex justify-between mb-1">
+          <span className="text-xs font-bold text-gray-500 uppercase">{label}</span>
+        </div>
+        
+        {/* Barra Cenário A */}
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-16 text-right text-xs font-bold text-gray-500">{format ? formatCurrency(valA) : valA}</div>
+          <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gray-400 rounded-full" style={{ width: `${pctA}%` }}></div>
+          </div>
+        </div>
+
+        {/* Barra Cenário B */}
+        <div className="flex items-center gap-2">
+          <div className="w-16 text-right text-xs font-bold text-sow-green">{format ? formatCurrency(valB) : valB}</div>
+          <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-sow-green rounded-full" style={{ width: `${pctB}%` }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
@@ -153,15 +159,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-gray-600">CENÁRIO A (Base)</h3>
           </div>
           
-          <InputGroup 
-            label="Qtd. Lote" 
-            name="batchA" 
-            value={inputA.batchSize} 
-            onChange={(e) => handleChange(setInputA, 'batchSize', parseInt(e.target.value) || 0)} 
-            type="number" 
-            step="1"
-            onKeyDown={blockDecimals} 
-          />
+          <InputGroup label="Qtd. Lote" name="batchA" value={inputA.batchSize} onChange={(e) => handleChange(setInputA, 'batchSize', parseInt(e.target.value) || 0)} type="number" step="1" onKeyDown={blockDecimals} />
           <InputGroup label="Preço Malha (R$/kg)" name="fabA" value={inputA.fabricPricePerKg} onChange={(e) => handleChange(setInputA, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
           <div className="pt-2 border-t border-gray-100">
@@ -172,9 +170,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                   key={t}
                   onClick={() => handleEmbellishmentChange('A', t as any)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded border transition-all ${
-                    getActiveType(inputA) === t
-                    ? 'bg-gray-600 text-white border-gray-600 shadow-sm' 
-                    : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
+                    getActiveType(inputA) === t ? 'bg-gray-600 text-white border-gray-600 shadow-sm' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {t === 'NONE' ? 'LISO' : t}
@@ -206,60 +202,56 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
           </div>
         </div>
 
-        {/* === GRÁFICO CENTRAL & VEREDITO === */}
+        {/* === PAINEL CENTRAL (NOVA VISUALIZAÇÃO) === */}
         <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col justify-center">
-                <h3 className="text-xs font-bold text-center uppercase text-gray-400 mb-6">Raio-X Comparativo</h3>
+            <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft flex-1 flex flex-col">
+                <div className="flex items-center justify-center gap-2 mb-6 border-b border-gray-100 pb-4">
+                    <PieChart className="w-5 h-5 text-sow-green" />
+                    <h3 className="text-sm font-bold text-center uppercase text-gray-600">Raio-X Comparativo</h3>
+                </div>
                 
-                {/* GRÁFICO: Key removida para evitar erro de sintaxe, altura fixa mantida */}
-                <div style={{ width: '100%', height: '300px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                            data={chartData} 
-                            margin={{top: 20, right: 30, left: 0, bottom: 0}}
-                            barGap={10}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                            <XAxis 
-                                dataKey="name" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#6b7280', dy: 10}} 
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 11, fontFamily: 'Montserrat', fill: '#9ca3af'}} 
-                                tickFormatter={(value) => `R$${value}`}
-                            />
-                            <Tooltip 
-                                cursor={{fill: '#f9fafb'}}
-                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontFamily: 'Montserrat', fontSize: '12px'}}
-                                formatter={(val: number) => [formatCurrency(val), '']}
-                            />
-                            <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Montserrat' }} />
-                            
-                            <Bar dataKey="A" name="Cenário A" fill="#9ca3af" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                            <Bar dataKey="B" name="Cenário B" fill="#72bf03" radius={[4, 4, 0, 0]} isAnimationActive={false} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                {/* Legenda */}
+                <div className="flex justify-center gap-6 mb-6">
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-gray-400 rounded-full"></div><span className="text-xs font-bold text-gray-500">Cenário A</span></div>
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-sow-green rounded-full"></div><span className="text-xs font-bold text-sow-green">Cenário B</span></div>
                 </div>
 
-                <div className="flex justify-center mt-6 border-t border-gray-100 pt-4">
-                    {/* Legenda automática gerenciada pelo Recharts */}
+                {/* Barras de Progresso Customizadas (Infalíveis) */}
+                <div className="flex-1 flex flex-col justify-center">
+                    <ComparativeBar 
+                        label="Custo de Produção" 
+                        valA={resultA?.totalProductionCost || 0} 
+                        valB={resultB?.totalProductionCost || 0} 
+                        inverse // Marca visualmente que menor é melhor (lógica visual opcional)
+                    />
+                    
+                    <ComparativeBar 
+                        label="Preço de Venda Sugerido" 
+                        valA={resultA?.suggestedSalePrice || 0} 
+                        valB={resultB?.suggestedSalePrice || 0} 
+                    />
+
+                    <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+                        <ComparativeBar 
+                            label="Lucro Líquido (Por Peça)" 
+                            valA={resultA?.netProfitUnit || 0} 
+                            valB={resultB?.netProfitUnit || 0} 
+                        />
+                    </div>
                 </div>
             </div>
 
-            <div className={`p-6 rounded-xl border shadow-soft transition-all ${winner === 'B' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+            {/* Veredito */}
+            <div className={`p-6 rounded-xl border shadow-soft transition-all ${isTie ? 'bg-gray-50 border-gray-200' : winner === 'B' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className={`w-5 h-5 ${winner === 'B' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <CheckCircle2 className={`w-5 h-5 ${isTie ? 'text-gray-400' : winner === 'B' ? 'text-green-600' : 'text-gray-400'}`} />
                     <h3 className="font-bold text-sm uppercase tracking-wider text-sow-black">Veredito Financeiro</h3>
                 </div>
                 
-                {Math.abs(diff) < 0.01 ? (
+                {isTie ? (
                      <div>
                         <p className="text-xl font-bold text-sow-black mb-1">Empate Técnico</p>
-                        <p className="text-xs text-gray-600 mt-2">Os dois cenários apresentam o mesmo resultado financeiro.</p>
+                        <p className="text-xs text-gray-600 mt-2">Os dois cenários apresentam o mesmo resultado.</p>
                      </div>
                 ) : winner === 'B' ? (
                     <div>
@@ -285,15 +277,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
             <h3 className="font-bold text-sow-green">CENÁRIO B (Simulação)</h3>
           </div>
           
-          <InputGroup 
-            label="Qtd. Lote" 
-            name="batchB" 
-            value={inputB.batchSize} 
-            onChange={(e) => handleChange(setInputB, 'batchSize', parseInt(e.target.value) || 0)} 
-            type="number" 
-            step="1"
-            onKeyDown={blockDecimals} 
-          />
+          <InputGroup label="Qtd. Lote" name="batchB" value={inputB.batchSize} onChange={(e) => handleChange(setInputB, 'batchSize', parseInt(e.target.value) || 0)} type="number" step="1" onKeyDown={blockDecimals} />
           <InputGroup label="Preço Malha (R$/kg)" name="fabB" value={inputB.fabricPricePerKg} onChange={(e) => handleChange(setInputB, 'fabricPricePerKg', parseFloat(e.target.value))} type="number" prefix="R$" />
           
           <div className="pt-2 border-t border-gray-100">
@@ -304,9 +288,7 @@ export const Comparator: React.FC<ComparatorProps> = ({ settings }) => {
                   key={t}
                   onClick={() => handleEmbellishmentChange('B', t as any)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded border transition-all ${
-                    getActiveType(inputB) === t
-                    ? 'bg-sow-green text-white border-sow-green shadow-md' 
-                    : 'bg-white text-sow-grey border-sow-border hover:bg-green-50'
+                    getActiveType(inputB) === t ? 'bg-sow-green text-white border-sow-green shadow-md' : 'bg-white text-sow-grey border-sow-border hover:bg-green-50'
                   }`}
                 >
                   {t === 'NONE' ? 'LISO' : t}
