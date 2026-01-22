@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -21,6 +22,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
     const [settingsChangedAlert, setSettingsChangedAlert] = useState(false);
     const prevSettingsRef = useRef<SettingsData>(settings);
 
+    // 1. MONITOR DE MUDANÇAS GLOBAIS
     useEffect(() => {
         const prevSettings = prevSettingsRef.current;
         let hasChanges = false;
@@ -48,9 +50,8 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         prevSettingsRef.current = settings;
     }, [settings, input.sewingCost]);
 
-    // SINCRONIZA O CUSTO MANUAL DO DTF COM O OBJETO DE INPUT
+    // 2. CÁLCULO E ATUALIZAÇÃO DO CENÁRIO (DTF MANUAL)
     useEffect(() => {
-        // Cópia profunda para evitar problemas de referência
         const calculatedInput = { 
             ...input, 
             embellishments: input.embellishments.map(e => ({...e})) 
@@ -62,11 +63,14 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
              const totalDtfCost = dtfPrintManual + dtfAppManual;
              const unitCost = input.batchSize > 0 ? (totalDtfCost / input.batchSize) : 0;
              
-             // AQUI ESTÁ A CORREÇÃO: USAMOS UMA VARIÁVEL EXCLUSIVA 'dtfManualUnitCost'
              calculatedInput.embellishments[dtfItemIndex] = {
                  ...calculatedInput.embellishments[dtfItemIndex],
                  dtfManualUnitCost: unitCost, 
-                 dtfMetersUsed: 0 
+                 dtfMetersUsed: 0,
+                 // Garante limpeza de campos de Silk
+                 printColors: 0,
+                 isRegraving: false,
+                 printSetupCost: 0
              };
         }
         
@@ -91,30 +95,45 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
       setInput(prev => ({ ...prev, embellishments: prev.embellishments.filter(i => i.id !== id) }));
     };
 
+    // CORREÇÃO: LÓGICA DE ATUALIZAÇÃO DO SILK E INTEIROS
     const updateEmbellishment = (id: string, field: keyof Embellishment, value: string | number | boolean) => {
         setInput(prev => {
             const updatedList = prev.embellishments.map(item => {
                 if (item.id !== id) return item;
                 
-                const newItem = { ...item, [field]: value };
+                // Força Inteiro para Cores e Milheiros
+                let cleanValue = value;
+                if (field === 'printColors' || field === 'embroideryStitchCount') {
+                    cleanValue = typeof value === 'string' ? parseInt(value) || 0 : Math.floor(value as number);
+                    if (cleanValue < 1 && field === 'printColors') cleanValue = 1;
+                }
 
-                // LOGICA DE RESET AO TROCAR TIPO
+                const newItem = { ...item, [field]: cleanValue };
+
+                // LOGICA DE RESET E RECÁLCULO
                 if (field === 'type') {
                     if (value === 'DTF') {
-                        // Limpa campos visuais, mas o calculo é garantido pelo dtfManualUnitCost
                         newItem.printSetupCost = 0; 
+                        newItem.printPassCost = 0;
+                        newItem.printColors = 0;
                     } else if (value === 'SILK') {
                         newItem.dtfManualUnitCost = 0;
+                        newItem.printColors = 1; // Reseta para 1 cor ao voltar para Silk
                     }
                 }
 
-                if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM' && (field === 'type' || field === 'silkSize' || field === 'printColors' || field === 'isRegraving')) {
+                // RECÁLCULO IMEDIATO DO PREÇO DO SILK SE MUDAR: TIPO, TAMANHO, CORES OU REGRAVAÇÃO
+                if (newItem.type === 'SILK' && newItem.silkSize !== 'CUSTOM') {
                     const table = newItem.silkSize === 'SMALL' ? settings.silkPrices.small : settings.silkPrices.large;
+                    
+                    // Garante que pegamos o valor atualizado de cores, seja do state antigo ou do novo input
                     const colors = newItem.printColors || 1;
                     const extraColors = Math.max(0, colors - 1);
+                    
                     newItem.printSetupCost = newItem.isRegraving ? table.screenRemake : table.screenNew;
                     newItem.printPassCost = table.firstColor + (extraColors * table.extraColor);
                 }
+                
                 return newItem;
             });
             return { ...prev, embellishments: updatedList };
@@ -246,12 +265,14 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                           ) : (
                               item.type === 'SILK' ? (
                                   <div className="grid grid-cols-2 gap-3">
-                                      <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', parseFloat(e.target.value))} type="number" />
+                                      {/* CORREÇÃO: step=1 para inteiros */}
+                                      <InputGroup label="Nº Cores" name={`colors_${item.id}`} value={item.printColors || 1} onChange={(e) => updateEmbellishment(item.id, 'printColors', e.target.value)} type="number" step="1" />
                                       <div className="flex items-center pt-5"><label className="flex gap-2 text-xs font-bold text-sow-grey"><input type="checkbox" checked={item.isRegraving || false} onChange={(e) => updateEmbellishment(item.id, 'isRegraving', e.target.checked)} /> Regravação?</label></div>
                                   </div>
                               ) : (
                                   <div className="grid grid-cols-2 gap-3">
-                                      <InputGroup label="Milheiros" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', parseFloat(e.target.value))} type="number" />
+                                      {/* CORREÇÃO: step=1 para inteiros */}
+                                      <InputGroup label="Milheiros" name={`emb_stitch_${item.id}`} value={item.embroideryStitchCount || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryStitchCount', e.target.value)} type="number" step="1" />
                                       <InputGroup label="Valor/Mil" name={`emb_cost_${item.id}`} value={item.embroideryCostPerThousand || 0} onChange={(e) => updateEmbellishment(item.id, 'embroideryCostPerThousand', parseFloat(e.target.value))} type="number" prefix="R$" />
                                   </div>
                               )

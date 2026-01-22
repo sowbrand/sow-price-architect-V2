@@ -46,21 +46,32 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         } else if (item.type === 'BORDADO') {
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
-            // LÓGICA DTF (AGORA TOTALMENTE ISOLADA)
+            // Lógica DTF Ajustada: Custo Zero se campos estiverem vazios
             
-            // Regra de Varejo/Atacado
             const applicationCost = input.batchSize > settings.serviceCosts.dtfWholesaleLimit 
                 ? settings.serviceCosts.dtfAppWholesale 
                 : settings.serviceCosts.dtfAppRetail;
 
-            // Verifica SE existe custo manual NOVO (dtfManualUnitCost)
-            if (item.dtfManualUnitCost && item.dtfManualUnitCost > 0) {
-                itemCost = item.dtfManualUnitCost + applicationCost;
+            // Se existe custo manual definido (mesmo que 0, se o campo foi usado)
+            if (item.dtfManualUnitCost !== undefined) {
+                // Se o custo manual é 0, entendemos que o usuário limpou o campo ou ainda não preencheu.
+                // Nesse caso, só cobramos a aplicação se houver alguma indicação de custo > 0.
+                // Se o usuário colocou R$ 0,00, o custo total é R$ 0,00.
+                // Se o usuário colocou R$ 1,00, o custo total é R$ 1,00 (assumindo que ele já somou tudo lá, OU o sistema soma a aplicação?)
+                // NOTA: O código do React soma Impressão + Aplicação e joga em dtfManualUnitCost.
+                // Logo, dtfManualUnitCost JÁ CONTÉM a aplicação se o usuário preencheu o campo de aplicação.
+                // Se ambos são 0, dtfManualUnitCost é 0.
+                
+                itemCost = item.dtfManualUnitCost; 
             } else {
-                // Se não tem manual, calcula por metro (modo legado/fallback)
+                // Modo legado (Metragem)
                 const meters = item.dtfMetersUsed || 0;
-                const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
-                itemCost = printUnit + applicationCost;
+                if (meters > 0) {
+                    const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
+                    itemCost = printUnit + applicationCost;
+                } else {
+                    itemCost = 0; // Sem metragem, sem custo manual = Custo Zero.
+                }
             }
         }
         processingUnit += itemCost;
