@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { InputGroup } from '../components/InputGroup';
 import type { SettingsData } from '../types';
@@ -40,6 +41,8 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
 
   return (
     <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
+      
+      {/* CABEÇALHO */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-helvetica font-bold text-sow-black">Configurações Globais</h2>
@@ -58,8 +61,10 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
         </button>
       </div>
 
+      {/* GRID DE CARDS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
-        {/* Custos Fixos */}
+        
+        {/* CARD 1: CUSTOS FIXOS */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Estrutura da Empresa</h3>
           <div className="space-y-4">
@@ -68,7 +73,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           </div>
         </div>
 
-        {/* Impostos e Taxas (AQUI ESTÁ A CORREÇÃO DO MEI) */}
+        {/* CARD 2: IMPOSTOS */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Financeiro & Comercial</h3>
           <div className="space-y-4">
@@ -94,7 +99,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           </div>
         </div>
 
-        {/* Custos de Serviço (Corte, Costura, DTF) */}
+        {/* CARD 3: CUSTOS DE SERVIÇO */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft lg:col-span-2">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Custos de Serviços (Mão de Obra e Insumos)</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -115,6 +120,7 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
              </div>
           </div>
         </div>
+
       </div>
     </div>
   );

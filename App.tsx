@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './views/Dashboard';
 import { PricingCalculator } from './views/PricingCalculator';
