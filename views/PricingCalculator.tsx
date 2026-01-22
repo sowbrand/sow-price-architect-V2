@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tag, Package, Layers, Truck, TrendingUp, PlusCircle, Trash2, CheckCircle2, Download, RefreshCw, X, Printer, DollarSign, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -153,6 +154,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
         {/* COLUNA ESQUERDA: INPUTS */}
         <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-2 pb-24 h-full scrollbar-thin">
             
+            {/* 1. DEFINIÇÃO DO PRODUTO */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                 <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Tag className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">Definição do Produto</h3></div>
                 <div className="space-y-3">
@@ -160,31 +162,39 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
                     {input.productCategory === 'Outro' && <InputGroup label="Nome Personalizado" name="customProductName" value={input.customProductName} onChange={handleChange} type="text" />}
                     <div className="grid grid-cols-2 gap-3">
                         <InputGroup label="Qtd. do Lote (Peças)" name="batchSize" value={input.batchSize} onChange={handleChange} type="number" step="1" min="1" onKeyDown={blockDecimals} />
-                        {/* NOVO CAMPO: CUSTO PILOTAGEM */}
                         <InputGroup label="Pilotagem (Custo Total)" name="pilotingCost" value={input.pilotingCost} onChange={handleChange} type="number" prefix="R$" />
                     </div>
                 </div>
             </div>
 
+            {/* 2. MATÉRIA-PRIMA & CORTE (AQUI ESTÃO AS MUDANÇAS DA ETAPA 3) */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Package className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">1. Matéria-Prima & Corte</h3></div>
               <div className="grid grid-cols-2 gap-3">
                   <InputGroup label="Preço Malha" name="fabricPricePerKg" value={input.fabricPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
                   <InputGroup label="Rendimento" name="piecesPerKg" value={input.piecesPerKg} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
                   
-                  {/* NOVOS CAMPOS: RIBANA */}
                   <InputGroup label="Preço Ribana" name="ribanaPricePerKg" value={input.ribanaPricePerKg} onChange={handleChange} type="number" prefix="R$" suffix="/kg" />
                   <InputGroup label="Rend. Ribana" name="ribanaYield" value={input.ribanaYield} onChange={handleChange} type="number" suffix="pçs/kg" step="0.1" />
 
-                  <div className="col-span-2"><InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" /></div>
+                  {/* NOVO CAMPO: LARGURA DA MALHA */}
+                  <InputGroup label="Larg. Malha (m)" name="fabricWidth" value={input.fabricWidth || 0} onChange={handleChange} type="number" step="0.01" suffix="m" />
+                  <InputGroup label="Perda Corte" name="lossPercentage" value={input.lossPercentage} onChange={handleChange} type="number" suffix="%" />
                   
                   <div className="col-span-2 border-t border-sow-border pt-3 mt-1">
-                      <div className="flex gap-2 mb-3">
-                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL')}>Manual</button>
-                          <button onClick={() => setInput(prev => ({...prev, cuttingType: 'PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'PLOTTER')}>Plotter</button>
+                      <div className="flex flex-col gap-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase">Método de Corte</label>
+                          {/* 3 OPÇÕES DE CORTE */}
+                          <div className="flex gap-2 mb-2">
+                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_RISCO'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_RISCO')}>Manual (s/ papel)</button>
+                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MANUAL_PLOTTER'}))} className={getSelectionButtonClass(input.cuttingType === 'MANUAL_PLOTTER')}>Plotter (c/ papel)</button>
+                              <button onClick={() => setInput(prev => ({...prev, cuttingType: 'MACHINE'}))} className={getSelectionButtonClass(input.cuttingType === 'MACHINE')}>Automático</button>
+                          </div>
                       </div>
-                      {input.cuttingType === 'PLOTTER' && (
-                          <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
+                      
+                      {/* CUSTO DE PAPEL SÓ APARECE SE FOR PLOTTER OU MÁQUINA */}
+                      {(input.cuttingType === 'MANUAL_PLOTTER' || input.cuttingType === 'MACHINE') && (
+                          <div className="bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3 animate-fade-in">
                               <InputGroup label="Total Metros Risco" name="plotterMetersTotal" value={input.plotterMetersTotal} onChange={handleChange} type="number" suffix="m" />
                               <InputGroup label="Frete Papel" name="plotterFreight" value={input.plotterFreight} onChange={handleChange} type="number" prefix="R$" />
                           </div>
@@ -193,6 +203,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
+            {/* 3. BENEFICIAMENTO */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
               <div className="flex items-center justify-between mb-4 border-b border-sow-border pb-2">
                   <div className="flex items-center gap-2 text-sow-black"><Layers className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">2. Beneficiamento</h3></div>
@@ -252,24 +263,24 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ settings }
               </div>
             </div>
 
+            {/* 4. CONFECÇÃO & LOGÍSTICA */}
             <div className="bg-white p-5 rounded-xl border border-sow-border shadow-soft">
                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><Truck className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">3. Confecção & Logística</h3></div>
                <div className="grid grid-cols-2 gap-3">
                    <InputGroup label="Costura (Un)" name="sewingCost" value={input.sewingCost} onChange={handleChange} type="number" prefix="R$" />
                    <InputGroup label="Revisão/Acab." name="finishingCost" value={input.finishingCost} onChange={handleChange} type="number" prefix="R$" />
                    
-                   {/* NOVO CAMPO: AVIAMENTOS */}
                    <InputGroup label="Aviamentos (Un)" name="aviamentosCost" value={input.aviamentosCost} onChange={handleChange} type="number" prefix="R$" />
                    <InputGroup label="Embalagem (Un)" name="packagingCost" value={input.packagingCost} onChange={handleChange} type="number" prefix="R$" />
                    
                    <div className="col-span-2 bg-sow-light p-3 rounded-lg border border-sow-border grid grid-cols-2 gap-3">
                        <InputGroup label="Logística (Entrada)" name="logisticsTotalCost" value={input.logisticsTotalCost} onChange={handleChange} type="number" prefix="R$" />
-                       {/* NOVO CAMPO: FRETE SAÍDA */}
                        <InputGroup label="Frete Saída (Cliente)" name="freightOutCost" value={input.freightOutCost} onChange={handleChange} type="number" prefix="R$" />
                    </div>
                </div>
             </div>
 
+            {/* 5. ESTRATÉGIA */}
             <div className="bg-white p-5 rounded-xl border-l-4 border-l-sow-green shadow-soft">
                <div className="flex items-center gap-2 mb-4 text-sow-black border-b border-sow-border pb-2"><TrendingUp className="w-4 h-4 text-sow-green" /><h3 className="font-helvetica font-bold text-sm uppercase tracking-wider">4. Estratégia</h3></div>
                <InputGroup label="Margem Líquida Desejada" name="targetMargin" value={input.targetMargin} onChange={handleChange} type="number" suffix="%" />

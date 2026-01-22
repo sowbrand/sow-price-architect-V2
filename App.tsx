@@ -9,31 +9,32 @@ import { DTFCalculator } from './views/DTFCalculator';
 import { Settings } from './views/Settings';
 import { CalculationMode, SettingsData } from './types';
 
-// Configurações Padrão (ATUALIZADO ETAPA 1)
+// Configurações Padrão (ATUALIZADO ETAPA 3 - CORTE AVANÇADO)
 const DEFAULT_SETTINGS: SettingsData = {
-  monthlyFixedCosts: 2000, // Atualizado para R$ 2.000,00
-  estimatedMonthlyProduction: 1000, // Atualizado para 1.000 peças
-  taxRegime: 'MEI', // Alterado padrão para MEI conforme perfil Sowbrand
-  defaultTaxRate: 4, // Mantido como referência caso mude para Simples
-  meiDasTax: 75.00, // Taxa fixa MEI
-  defaultCardRate: 3.5, // Atualizado para 3.5%
-  defaultMarketingRate: 5, // Atualizado para 5%
-  defaultCommissionRate: 0, // Mantido 0%
+  monthlyFixedCosts: 2000,
+  estimatedMonthlyProduction: 1000,
+  taxRegime: 'MEI',
+  defaultTaxRate: 4,
+  meiDasTax: 75.00,
+  defaultCardRate: 3.5,
+  defaultMarketingRate: 5,
+  defaultCommissionRate: 0,
   
   silkPrices: {
-    // Tabela Pequena (Peito/Manga)
     small: { firstColor: 4.50, extraColor: 1.50, screenNew: 35, screenRemake: 25 },
-    // Tabela Grande (Costas)
     large: { firstColor: 6.50, extraColor: 2.50, screenNew: 55, screenRemake: 40 }
   },
   
   serviceCosts: {
-    cuttingManual: 1.50, // Mantido base, lógica de variação virá na Etapa 3
-    cuttingPlotter: 0.80, // Mantido base
-    plotterPaper: 5.70, // Atualizado para R$ 5,70/metro
-    sewingStandard: 4.75, // Atualizado para R$ 4,75
-    dtfPrintMeter: 60.00, // Mantido R$ 60,00
-    dtfApplication: 4.00 // Mantido base, lógica de escalonamento virá na Etapa 4
+    // NOVA ESTRUTURA DE CORTE
+    cuttingManual: 0.70,        // Risco Manual
+    cuttingManualPlotter: 0.55, // Risco Impresso
+    cuttingMachine: 0.80,       // Corte Automático
+    
+    plotterPaper: 5.70,
+    sewingStandard: 4.75,
+    dtfPrintMeter: 60.00,
+    dtfApplication: 4.00
   }
 };
 

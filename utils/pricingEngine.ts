@@ -1,30 +1,37 @@
 import type { ProductInput, SettingsData, CalculationResult } from '../types';
 
-// --- LÓGICA DE PRECIFICAÇÃO (CUSTO -> PREÇO) ---
 export const calculateScenario = (input: ProductInput, settings: SettingsData): CalculationResult => {
     const warnings: string[] = [];
     const safeBatchSize = input.batchSize > 0 ? input.batchSize : 1;
 
-    // 1. Matéria-Prima (Malha + Ribana)
+    // 1. Matéria-Prima
     const fabricBase = input.piecesPerKg > 0 ? input.fabricPricePerKg / input.piecesPerKg : 0;
-    
-    // Cálculo Ribana: Se houver rendimento, calcula o custo. Se não, é zero.
     const ribanaBase = input.ribanaYield > 0 ? input.ribanaPricePerKg / input.ribanaYield : 0;
-    
-    // Soma Malha + Ribana e aplica a perda de corte em ambos
     const materialUnit = (fabricBase + ribanaBase) * (1 + input.lossPercentage / 100);
 
-    // 2. Risco e Corte
+    // 2. Risco e Corte (Lógica Avançada)
     let plotterUnit = 0;
     let cuttingLaborUnit = 0;
 
-    if (input.cuttingType === 'MANUAL') {
+    // Validação de Largura do Plotter
+    if ((input.cuttingType === 'MANUAL_PLOTTER' || input.cuttingType === 'MACHINE') && input.fabricWidth > 1.83) {
+        warnings.push("⚠️ Largura da Malha excede o limite do Plotter (1.83m).");
+    }
+
+    if (input.cuttingType === 'MANUAL_RISCO') {
+        // Corte Manual Puro (Sem custo de papel)
         plotterUnit = 0;
         cuttingLaborUnit = settings.serviceCosts.cuttingManual;
-    } else {
+    } else if (input.cuttingType === 'MANUAL_PLOTTER') {
+        // Corte Manual com Risco Impresso
         const paperCost = input.plotterMetersTotal * settings.serviceCosts.plotterPaper;
         plotterUnit = (paperCost + input.plotterFreight) / safeBatchSize;
-        cuttingLaborUnit = settings.serviceCosts.cuttingPlotter;
+        cuttingLaborUnit = settings.serviceCosts.cuttingManualPlotter;
+    } else if (input.cuttingType === 'MACHINE') {
+        // Corte Automático (Audaces)
+        const paperCost = input.plotterMetersTotal * settings.serviceCosts.plotterPaper;
+        plotterUnit = (paperCost + input.plotterFreight) / safeBatchSize;
+        cuttingLaborUnit = settings.serviceCosts.cuttingMachine;
     }
 
     // 3. Beneficiamento
@@ -59,16 +66,14 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         processingUnit += itemCost;
     });
 
-    // 4. Confecção e Logística
-    // Soma Aviamentos e Embalagem ao custo de confecção
+    // 4. Confecção
     const sewingUnit = input.sewingCost + input.finishingCost + input.aviamentosCost;
     
-    // Logística Entrada (rateada) + Embalagem + Frete Saída (direto)
+    // 5. Logística
     const logisticsFuelPerUnit = input.logisticsTotalCost / safeBatchSize;
     const logisticsInUnit = logisticsFuelPerUnit + input.packagingCost + input.freightOutCost;
 
-    // 5. Custos Industriais e Fixos
-    // Adiciona o custo de Pilotagem (Custo fixo do modelo rateado)
+    // 6. Pilotagem e Custos Finais
     const pilotingUnit = input.pilotingCost / safeBatchSize;
 
     const industrialCostUnit = materialUnit + plotterUnit + cuttingLaborUnit + processingUnit + sewingUnit + logisticsInUnit + pilotingUnit;
@@ -77,7 +82,6 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     
     const totalProductionCost = industrialCostUnit + fixedOverheadUnit;
 
-    // 6. Formação de Preço (Markup)
     let appliedTaxRate = settings.taxRegime === 'MEI' ? 0 : settings.defaultTaxRate;
     if (settings.taxRegime === 'MEI' && !warnings.some(w => w.includes('MEI'))) {
         warnings.push("ℹ️ MEI: Imposto 0% considerado.");
@@ -94,7 +98,6 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         suggestedSalePrice = totalProductionCost / divisor;
     }
 
-    // 7. Detalhamento Final
     const taxesUnit = suggestedSalePrice * (appliedTaxRate / 100);
     const cardFeesUnit = suggestedSalePrice * (settings.defaultCardRate / 100);
     const marketingUnit = suggestedSalePrice * (settings.defaultMarketingRate / 100);
@@ -110,7 +113,6 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     };
 };
 
-// --- ENGENHARIA REVERSA ---
 export const calculateReverse = (targetPrice: number, input: ProductInput, settings: SettingsData): CalculationResult => {
     const warnings: string[] = [];
     

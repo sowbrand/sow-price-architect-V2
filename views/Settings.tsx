@@ -20,7 +20,6 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
 
   const handleChange = (section: keyof SettingsData, field: string | null, value: any) => {
     setFormData(prev => {
-      // Se mudou o campo ServiceCosts (objeto aninhado)
       if (field && typeof prev[section] === 'object') {
         return {
           ...prev,
@@ -31,12 +30,10 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
         };
       }
       
-      // Lógica específica: Se mudar o regime para MEI, garantimos que o DAS tenha um valor
       if (section === 'taxRegime' && value === 'MEI' && !prev.meiDasTax) {
-          return { ...prev, taxRegime: value, meiDasTax: 75.00 }; // Valor padrão sugerido
+          return { ...prev, taxRegime: value, meiDasTax: 75.00 };
       }
 
-      // Se mudou um campo direto (ex: monthlyFixedCosts ou taxRegime)
       return { ...prev, [section]: value };
     });
     setHasChanges(true);
@@ -50,7 +47,6 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
   return (
     <div className="h-full flex flex-col font-montserrat bg-gray-50 overflow-y-auto p-6 scrollbar-thin">
       
-      {/* CABEÇALHO */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-helvetica font-bold text-sow-black">Configurações Globais</h2>
@@ -69,10 +65,8 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
         </button>
       </div>
 
-      {/* GRID DE CARDS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
         
-        {/* CARD 1: CUSTOS FIXOS */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Estrutura da Empresa</h3>
           <div className="space-y-4">
@@ -81,7 +75,6 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           </div>
         </div>
 
-        {/* CARD 2: IMPOSTOS */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Financeiro & Comercial</h3>
           <div className="space-y-4">
@@ -98,7 +91,6 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
                  </select>
                </div>
                
-               {/* LÓGICA DE EXIBIÇÃO CONDICIONAL */}
                {formData.taxRegime === 'MEI' ? (
                    <InputGroup 
                       label="Taxa Mensal DAS" 
@@ -128,18 +120,19 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           </div>
         </div>
 
-        {/* CARD 3: CUSTOS DE SERVIÇO */}
         <div className="bg-white p-6 rounded-xl border border-sow-border shadow-soft lg:col-span-2">
           <h3 className="font-bold text-sow-black mb-4 uppercase text-sm border-b pb-2">Custos de Serviços (Mão de Obra e Insumos)</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">Corte & Risco</span>
-                <InputGroup label="Corte Manual (Un)" name="cutM" value={formData.serviceCosts.cuttingManual} onChange={(e) => handleChange('serviceCosts', 'cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
-                <InputGroup label="Corte Plotter (Un)" name="cutP" value={formData.serviceCosts.cuttingPlotter} onChange={(e) => handleChange('serviceCosts', 'cuttingPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
+                {/* CAMPOS ATUALIZADOS PARA OS 3 TIPOS */}
+                <InputGroup label="Corte Manual s/ Plotter (Un)" name="cutM" value={formData.serviceCosts.cuttingManual} onChange={(e) => handleChange('serviceCosts', 'cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <InputGroup label="Corte Manual c/ Plotter (Un)" name="cutMP" value={formData.serviceCosts.cuttingManualPlotter} onChange={(e) => handleChange('serviceCosts', 'cuttingManualPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <InputGroup label="Corte Automático (Un)" name="cutMach" value={formData.serviceCosts.cuttingMachine} onChange={(e) => handleChange('serviceCosts', 'cuttingMachine', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Papel Plotter (Metro)" name="pap" value={formData.serviceCosts.plotterPaper} onChange={(e) => handleChange('serviceCosts', 'plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
              </div>
              <div className="space-y-3">
-                <span className="text-xs font-bold text-purple-600 block">DTF (Interno)</span>
+                <span className="text-xs font-bold text-purple-600 block">DTF</span>
                 <InputGroup label="Custo Impressão (Metro)" name="dtfP" value={formData.serviceCosts.dtfPrintMeter} onChange={(e) => handleChange('serviceCosts', 'dtfPrintMeter', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Custo Aplicação (Un)" name="dtfA" value={formData.serviceCosts.dtfApplication} onChange={(e) => handleChange('serviceCosts', 'dtfApplication', parseFloat(e.target.value))} type="number" prefix="R$" />
              </div>

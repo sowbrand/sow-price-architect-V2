@@ -14,7 +14,8 @@ export interface SilkPriceTable {
 
 export interface ServicesCosts {
   cuttingManual: number;   
-  cuttingPlotter: number;  
+  cuttingManualPlotter: number; // NOVO: Risco Plotado + Corte Manual
+  cuttingMachine: number;       // NOVO: Corte Automático
   plotterPaper: number;    
   sewingStandard: number;  
   dtfPrintMeter: number;   
@@ -24,10 +25,9 @@ export interface ServicesCosts {
 export interface SettingsData {
   monthlyFixedCosts: number;
   estimatedMonthlyProduction: number;
-  // Regime Tributário
   taxRegime: 'SIMPLES' | 'MEI';
-  defaultTaxRate: number; // Porcentagem (%) para Simples Nacional
-  meiDasTax: number;      // Valor Fixo (R$) para MEI
+  defaultTaxRate: number; 
+  meiDasTax: number;      
   defaultCardRate: number;
   defaultMarketingRate: number;
   defaultCommissionRate: number;
@@ -46,7 +46,6 @@ export interface Embellishment {
   embroideryStitchCount?: number; 
   embroideryCostPerThousand?: number;
   dtfMetersUsed?: number; 
-  calculatedUnitCost?: number;
   printUnitCost?: number;
 }
 
@@ -58,13 +57,14 @@ export interface ProductInput {
   fabricPricePerKg: number;
   piecesPerKg: number;
   lossPercentage: number;
+  fabricWidth: number; // NOVO: Largura da Malha (para validar plotter)
 
-  // NOVOS CAMPOS: Ribana
+  // Ribana
   ribanaPricePerKg: number;
-  ribanaYield: number; // Rendimento (pçs/kg)
+  ribanaYield: number;
 
   // Corte
-  cuttingType: 'MANUAL' | 'PLOTTER';
+  cuttingType: 'MANUAL_RISCO' | 'MANUAL_PLOTTER' | 'MACHINE'; // Tipos atualizados
   plotterMetersTotal: number; 
   plotterFreight: number;     
   cuttingLaborCost: number; 
@@ -76,15 +76,15 @@ export interface ProductInput {
   finishingCost: number;
   packagingCost: number;
   
-  // NOVOS CAMPOS: Aviamentos
-  aviamentosCost: number; // Por peça (etiqueta, viés, etc)
+  // Aviamentos
+  aviamentosCost: number; 
 
   // Logística
-  logisticsTotalCost: number; // Entrada
-  freightOutCost: number;     // Saída (Cliente - NOVO CAMPO)
+  logisticsTotalCost: number; 
+  freightOutCost: number;     
   
-  // NOVO CAMPO: Pilotagem
-  pilotingCost: number; // Custo fixo do desenvolvimento
+  // Pilotagem
+  pilotingCost: number; 
 
   batchSize: number;
   targetMargin: number;
