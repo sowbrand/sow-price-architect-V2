@@ -88,8 +88,8 @@ export const DTFCalculator: React.FC<DTFCalculatorProps> = ({ settings }) => {
   
   // --- CONFIGURAÇÕES FÍSICAS DO ROLO (LÓGICA BLINDADA) ---
   const ROLL_WIDTH_CM = 58; 
-  const VISUAL_MARGIN_CM = 1; 
-  const ITEM_GAP_CM = 1.0; 
+  const VISUAL_MARGIN_CM = 0.5; // ALTERADO PARA 0.5cm
+  const ITEM_GAP_CM = 0.5;      // ALTERADO PARA 0.5cm
   // Margem de segurança invisível para evitar erros de arredondamento do navegador
   const CALC_MARGIN_OFFSET = 0.05; 
   const MIN_X = VISUAL_MARGIN_CM + CALC_MARGIN_OFFSET; 
