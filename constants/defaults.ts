@@ -16,12 +16,16 @@ export const DEFAULT_SILK_PRICES = {
 };
 
 export const DEFAULT_SERVICE_COSTS = {
-  cuttingManual: 0.70,        // Risco Manual
-  cuttingManualPlotter: 0.55, // Risco Impresso
+  cuttingManual: 0.70,        
+  cuttingManualPlotter: 0.55, 
   plotterPaper: 5.70,      
   sewingStandard: 4.75,    
-  dtfPrintMeter: 60.00,    
-  dtfApplication: 4.00     
+  dtfPrintMeter: 60.00,
+  
+  // REGRA DE PREÇO DTF
+  dtfAppRetail: 2.00,      // Preço até 100 peças
+  dtfAppWholesale: 1.50,   // Preço a partir de 101 peças
+  dtfWholesaleLimit: 100   // Limite de corte
 };
 
 export const INITIAL_SETTINGS: SettingsData = {

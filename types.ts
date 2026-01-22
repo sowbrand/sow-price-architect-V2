@@ -18,7 +18,11 @@ export interface ServicesCosts {
   plotterPaper: number;    
   sewingStandard: number;  
   dtfPrintMeter: number;   
-  dtfApplication: number;  
+  
+  // CAMPOS DE ESCALONAMENTO DTF
+  dtfAppRetail: number;    // Preço para baixas quantidades (ex: R$ 2,00)
+  dtfAppWholesale: number; // Preço para altas quantidades (ex: R$ 1,50)
+  dtfWholesaleLimit: number; // O número de corte (ex: 100 peças)
 }
 
 export interface SettingsData {

@@ -9,27 +9,24 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
     const ribanaBase = input.ribanaYield > 0 ? input.ribanaPricePerKg / input.ribanaYield : 0;
     const materialUnit = (fabricBase + ribanaBase) * (1 + input.lossPercentage / 100);
 
-    // 2. Risco e Corte (Lógica Avançada - 2 OPÇÕES)
+    // 2. Risco e Corte
     let plotterUnit = 0;
     let cuttingLaborUnit = 0;
 
-    // Validação de Largura do Plotter (Apenas se usar plotter)
     if (input.cuttingType === 'MANUAL_PLOTTER' && input.fabricWidth > 1.83) {
         warnings.push("⚠️ Largura da Malha excede o limite do Plotter (1.83m).");
     }
 
     if (input.cuttingType === 'MANUAL_RISCO') {
-        // Corte Manual Puro (Sem custo de papel)
         plotterUnit = 0;
         cuttingLaborUnit = settings.serviceCosts.cuttingManual;
     } else if (input.cuttingType === 'MANUAL_PLOTTER') {
-        // Corte Manual com Risco Impresso
         const paperCost = input.plotterMetersTotal * settings.serviceCosts.plotterPaper;
         plotterUnit = (paperCost + input.plotterFreight) / safeBatchSize;
         cuttingLaborUnit = settings.serviceCosts.cuttingManualPlotter;
     }
 
-    // 3. Beneficiamento
+    // 3. Beneficiamento (LÓGICA DTF AJUSTADA)
     let processingUnit = 0;
     input.embellishments.forEach((item, index) => {
         let itemCost = 0;
@@ -49,13 +46,21 @@ export const calculateScenario = (input: ProductInput, settings: SettingsData): 
         } else if (item.type === 'BORDADO') {
             itemCost = (item.embroideryStitchCount || 0) * (item.embroideryCostPerThousand || 0);
         } else if (item.type === 'DTF') {
+            // REGRA DE APLICAÇÃO ESCALONADA
+            // Se Quantidade > Limite (100) -> Preço Atacado (1.50)
+            // Se Quantidade <= Limite (100) -> Preço Varejo (2.00)
+            const applicationCost = input.batchSize > settings.serviceCosts.dtfWholesaleLimit 
+                ? settings.serviceCosts.dtfAppWholesale 
+                : settings.serviceCosts.dtfAppRetail;
+
             if (item.printSetupCost && item.printSetupCost > 0) {
-                itemCost = item.printSetupCost;
+                // Se existe valor manual injetado (via Otimizador ou Manual)
+                itemCost = item.printSetupCost + applicationCost;
             } else {
+                // Modo legado (calculado por metro)
                 const meters = item.dtfMetersUsed || 0;
                 const printUnit = (meters * settings.serviceCosts.dtfPrintMeter) / safeBatchSize;
-                const appUnit = settings.serviceCosts.dtfApplication;
-                itemCost = printUnit + appUnit;
+                itemCost = printUnit + applicationCost;
             }
         }
         processingUnit += itemCost;

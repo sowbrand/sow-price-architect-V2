@@ -26,14 +26,16 @@ const DEFAULT_SETTINGS: SettingsData = {
   },
   
   serviceCosts: {
-    // ESTRUTURA DE CORTE ATUALIZADA (2 TIPOS)
-    cuttingManual: 0.70,        // Risco Manual (s/ papel)
-    cuttingManualPlotter: 0.55, // Risco Impresso (c/ papel)
-    
+    cuttingManual: 0.70,        
+    cuttingManualPlotter: 0.55, 
     plotterPaper: 5.70,
     sewingStandard: 4.75,
     dtfPrintMeter: 60.00,
-    dtfApplication: 4.00
+    
+    // Configuração DTF Inicial
+    dtfAppRetail: 2.00,      // Até 100 pçs
+    dtfAppWholesale: 1.50,   // Acima de 100 pçs
+    dtfWholesaleLimit: 100   // Limite
   }
 };
 

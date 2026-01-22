@@ -125,16 +125,22 @@ export const Settings: React.FC<SettingsProps> = ({ data, onSave }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">Corte & Risco</span>
-                {/* CAMPOS ATUALIZADOS PARA OS 2 TIPOS */}
                 <InputGroup label="Corte Manual s/ Plotter (Un)" name="cutM" value={formData.serviceCosts.cuttingManual} onChange={(e) => handleChange('serviceCosts', 'cuttingManual', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Corte Manual c/ Plotter (Un)" name="cutMP" value={formData.serviceCosts.cuttingManualPlotter} onChange={(e) => handleChange('serviceCosts', 'cuttingManualPlotter', parseFloat(e.target.value))} type="number" prefix="R$" />
                 <InputGroup label="Papel Plotter (Metro)" name="pap" value={formData.serviceCosts.plotterPaper} onChange={(e) => handleChange('serviceCosts', 'plotterPaper', parseFloat(e.target.value))} type="number" prefix="R$" />
              </div>
+             
+             {/* CONFIGURAÇÃO DINÂMICA DO DTF */}
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">DTF</span>
                 <InputGroup label="Custo Impressão (Metro)" name="dtfP" value={formData.serviceCosts.dtfPrintMeter} onChange={(e) => handleChange('serviceCosts', 'dtfPrintMeter', parseFloat(e.target.value))} type="number" prefix="R$" />
-                <InputGroup label="Custo Aplicação (Un)" name="dtfA" value={formData.serviceCosts.dtfApplication} onChange={(e) => handleChange('serviceCosts', 'dtfApplication', parseFloat(e.target.value))} type="number" prefix="R$" />
+                <div className="grid grid-cols-2 gap-2">
+                    <InputGroup label="Aplic. (Até limite)" name="dtfR" value={formData.serviceCosts.dtfAppRetail} onChange={(e) => handleChange('serviceCosts', 'dtfAppRetail', parseFloat(e.target.value))} type="number" prefix="R$" />
+                    <InputGroup label="Aplic. (Acima limite)" name="dtfW" value={formData.serviceCosts.dtfAppWholesale} onChange={(e) => handleChange('serviceCosts', 'dtfAppWholesale', parseFloat(e.target.value))} type="number" prefix="R$" />
+                </div>
+                <InputGroup label="Limite Quantidade" name="dtfL" value={formData.serviceCosts.dtfWholesaleLimit} onChange={(e) => handleChange('serviceCosts', 'dtfWholesaleLimit', parseFloat(e.target.value))} type="number" />
              </div>
+             
              <div className="space-y-3">
                 <span className="text-xs font-bold text-purple-600 block">Confecção</span>
                 <InputGroup label="Costura Padrão (Un)" name="sew" value={formData.serviceCosts.sewingStandard} onChange={(e) => handleChange('serviceCosts', 'sewingStandard', parseFloat(e.target.value))} type="number" prefix="R$" />
